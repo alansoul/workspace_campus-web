@@ -1,0 +1,39 @@
+name: Frontend CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate Frontend (campus-web)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🛒 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: 📦 Install Dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: 🧹 Lint Frontend
+        run: pnpm lint
+
+      - name: 🏗️ Build Frontend
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_API_URL: "http://localhost:4000/api"
+          NEXT_PUBLIC_WS_URL: "http://localhost:4000"
