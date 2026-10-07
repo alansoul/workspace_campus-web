@@ -18,6 +18,24 @@ export async function apiFetch<T = unknown>(
     },
   });
 
+  if (res.status === 401 && typeof window !== 'undefined') {
+    Cookies.remove('token');
+    localStorage.removeItem('user');
+    window.dispatchEvent(new Event('storage'));
+
+    if (
+      !window.location.pathname.startsWith('/login') &&
+      !window.location.pathname.startsWith('/register')
+    ) {
+      const loginUrl = new URL('/login', window.location.origin);
+      loginUrl.searchParams.set(
+        'redirect',
+        window.location.pathname + window.location.search,
+      );
+      window.location.href = loginUrl.toString();
+    }
+  }
+
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {

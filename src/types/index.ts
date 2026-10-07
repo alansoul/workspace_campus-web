@@ -3,9 +3,23 @@ export interface User {
   email: string;
   username: string;
   fullName: string;
-  role: 'STUDENT' | 'FACULTY' | 'ADMIN';
+  branch?: string;
+  role: 'STUDENT' | 'FACULTY' | 'CLUB_HEAD' | 'ADMIN' | 'SUPER_ADMIN';
   universityId: string;
   universityName?: string;
+  isEmailVerified: boolean;
+}
+
+export interface DomainResolution {
+  allowed: boolean;
+  domain?: string;
+  error?: string;
+  university?: {
+    id: string;
+    name: string;
+    shortCode: string;
+    logoUrl?: string;
+  };
 }
 
 export interface Note {
@@ -15,7 +29,20 @@ export interface Note {
   semester: number;
   branch: string;
   fileUrl: string;
+  downloads: number;
+  authorId: string;
   author: { fullName: string };
+  createdAt: string;
+}
+
+export interface Question {
+  id: string;
+  title: string;
+  subject: string;
+  description: string;
+  authorId: string;
+  author: { fullName: string };
+  createdAt: string;
 }
 
 export interface Gig {
@@ -24,6 +51,8 @@ export interface Gig {
   description: string;
   budget: number;
   category: string;
-  status: 'OPEN' | 'IN_PROGRESS' | 'COMPLETED';
+  status: 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  clientId: string;
   client: { fullName: string };
+  createdAt: string;
 }
