@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Cookies from 'js-cookie';
 import { apiFetch } from '@/lib/api';
 import { User } from '@/types';
 import {
@@ -96,7 +95,6 @@ export default function ClaimUniversityPage() {
         }),
       });
 
-      Cookies.set('token', res.accessToken, { expires: 7 });
       localStorage.setItem('user', JSON.stringify(res.user));
       window.dispatchEvent(new Event('storage'));
       router.push('/dashboard');

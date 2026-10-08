@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Cookies from 'js-cookie';
 import { apiFetch } from '@/lib/api';
 import { DomainResolution, User } from '@/types';
 import {
@@ -83,28 +82,25 @@ function RegisterForm() {
   }
 
   async function handleVerifyAndRegister(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    try {
-      const res = await apiFetch<{ accessToken: string; user: User }>(
-        '/auth/verify-and-register',
-        {
-          method: 'POST',
-          body: JSON.stringify({ email, otp, ...form }),
-        },
-      );
-      Cookies.set('token', res.accessToken, { expires: 7 });
-      localStorage.setItem('user', JSON.stringify(res.user));
-      window.dispatchEvent(new Event('storage'));
-      router.push('/dashboard');
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
-    } finally {
-      setLoading(false);
-    }
+  try {
+    const res = await apiFetch<{ user: User }>('/auth/verify-and-register', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp, ...form }),
+    });
+
+    localStorage.setItem('user', JSON.stringify(res.user));
+    window.dispatchEvent(new Event('storage'));
+    router.push('/dashboard');
+  } catch (err: unknown) {
+    setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">

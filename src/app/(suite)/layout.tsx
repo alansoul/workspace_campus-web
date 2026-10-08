@@ -3,10 +3,10 @@
 import { useSyncExternalStore } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import Cookies from 'js-cookie';
 import { User } from '@/types';
 import { AppLauncher } from '@/components/AppLauncher';
 import { GraduationCap, LogOut } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 function subscribe(cb: () => void) {
   window.addEventListener('storage', cb);
@@ -25,12 +25,16 @@ export default function SuiteLayout({ children }: { children: React.ReactNode })
     try { user = JSON.parse(rawUser) as User; } catch {}
   }
 
-  function logout() {
-    Cookies.remove('token');
-    localStorage.removeItem('user');
-    window.dispatchEvent(new Event('storage'));
-    router.push('/login');
+  async function logout() {
+  try {
+    await apiFetch('/auth/logout', { method: 'POST' });
+  } catch {
+    // Continue cleanup even if network fails
   }
+  localStorage.removeItem('user');
+  window.dispatchEvent(new Event('storage'));
+  router.push('/login');
+}
 
   const currentApp =
     pathname.startsWith('/academics') ? 'Academics' :

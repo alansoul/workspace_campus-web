@@ -3,7 +3,6 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Cookies from 'js-cookie';
 import { apiFetch } from '@/lib/api';
 import { User } from '@/types';
 import { GraduationCap, LogIn, Loader2 } from 'lucide-react';
@@ -21,36 +20,29 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+ async function handleLogin(e: React.FormEvent) {
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    try {
-      const res = await apiFetch<LoginResponse>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(form),
-      });
+  try {
+    const res = await apiFetch<LoginResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(form),
+    });
 
-      // 1. Securely set token in cookie and user in local storage
-      Cookies.set('token', res.accessToken, { expires: 7 });
-      localStorage.setItem('user', JSON.stringify(res.user));
+    // Token is automatically set as an httpOnly cookie by the server response
+    localStorage.setItem('user', JSON.stringify(res.user));
+    window.dispatchEvent(new Event('storage'));
 
-      // 2. Deep-Link Redirect (Google Workspace Behavior)
-      // Read where the user originally wanted to go, default to dashboard
-      const redirect = searchParams.get('redirect') || '/dashboard';
-      router.push(redirect);
-      
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unexpected error occurred');
-      }
-    } finally {
-      setLoading(false);
-    }
+    const redirect = searchParams.get('redirect') || '/dashboard';
+    router.push(redirect);
+  } catch (err: unknown) {
+    setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">

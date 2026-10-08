@@ -1,25 +1,22 @@
-import Cookies from 'js-cookie';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/+$/, '');
 
 export async function apiFetch<T = unknown>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const token = Cookies.get('token');
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  const url = `${API_URL}${cleanPath}`;
 
-  const res = await fetch(`${API_URL}${path}`, {
-    credentials: 'include',
+  const res = await fetch(url, {
+    credentials: 'include', // Automatically passes and receives httpOnly cookies across origins
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   });
 
   if (res.status === 401 && typeof window !== 'undefined') {
-    Cookies.remove('token');
     localStorage.removeItem('user');
     window.dispatchEvent(new Event('storage'));
 
@@ -41,7 +38,7 @@ export async function apiFetch<T = unknown>(
   if (!res.ok) {
     const msg = Array.isArray(data.message)
       ? data.message.join(', ')
-      : data.message || `Error: ${res.status}`;
+      : data.message || `Error ${res.status}: Failed to communicate with server`;
     throw new Error(msg);
   }
 
