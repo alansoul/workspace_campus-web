@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #f8f6ff;
   --foreground: #171717;
 }
 
@@ -12,15 +12,97 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 130px;
 }
 
 body {
-  background: var(--background);
+  margin: 0;
+  background: #f8f6ff;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    'Google Sans',
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+/* ==========================================================================
+   GLOBAL INSTANT FIX: SEAMLESS VIBRANT GRADIENTS ACROSS ALL SECTIONS
+   ========================================================================== */
+
+/* 1. HERO CANVAS: Rich ambient pastel light */
+.marketing-canvas,
+.marketing-page > section:first-of-type,
+.marketing-page > div:first-of-type {
+  background:
+    radial-gradient(ellipse 70% 50% at 15% 25%, rgba(218, 233, 255, 0.85) 0%, transparent 60%),
+    radial-gradient(ellipse 65% 55% at 85% 30%, rgba(244, 224, 255, 0.8) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 45% at 50% 70%, rgba(248, 235, 255, 0.6) 0%, transparent 65%),
+    linear-gradient(180deg, #edf3ff 0%, #f8f6ff 60%, #f8f6ff 100%) !important;
+}
+
+/* 2. APP SHOWCASE DOCK: Smooth transition behind the search & apps */
+.marketing-showcase,
+#included {
+  background:
+    radial-gradient(ellipse at 20% 40%, rgba(220, 235, 255, 0.7) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 60%, rgba(245, 228, 255, 0.65) 0%, transparent 50%),
+    linear-gradient(180deg, #f8f6ff 0%, #f6f1ff 50%, #f8f6ff 100%) !important;
+}
+
+/* 3. MASCOT CAROUSEL (NORTHSTAR HERO): Restored vibrant mesh & uncapped headline */
+.northstar-hero {
+  background:
+    radial-gradient(ellipse at 12% 40%, rgba(212, 232, 255, 0.85) 0%, transparent 48%),
+    radial-gradient(ellipse at 88% 35%, rgba(244, 220, 255, 0.82) 0%, transparent 48%),
+    radial-gradient(ellipse at 50% 85%, rgba(235, 228, 255, 0.7) 0%, transparent 52%),
+    linear-gradient(180deg, #f8f6ff 0%, #f5efff 45%, #f8f6ff 100%) !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  overflow: clip !important;
+}
+
+/* Restore the 3D glossy spheres with rich specular highlights */
+.hero-orb {
+  display: block !important;
+  opacity: 0.85 !important;
+  background: linear-gradient(140deg, #ffffff, #dce8ff 48%, #eadbff) !important;
+  box-shadow:
+    inset -12px -18px 35px rgba(154, 136, 255, 0.18),
+    inset 9px 8px 24px rgba(255, 255, 255, 0.95),
+    0 25px 60px rgba(123, 123, 227, 0.15) !important;
+}
+
+.hero-orb--bottom {
+  opacity: 0.3 !important;
+  filter: blur(18px) !important; /* Soft blur prevents any hard horizontal cutoffs */
+}
+
+/* 4. INTERACTIVE PREVIEW ("One connected workspace"): Restored glow with seamless top */
+.suite-showcase {
+  background:
+    radial-gradient(ellipse at 10% 25%, rgba(211, 229, 255, 0.45) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 28%, rgba(238, 216, 255, 0.42) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 70%, rgba(230, 226, 255, 0.3) 0%, transparent 50%),
+    linear-gradient(180deg, #f8f6ff 0%, #faf8ff 30%, #fcfaff 65%, #ffffff 100%) !important;
+}
+
+.suite-orb {
+  display: block !important;
+  opacity: 0.55 !important;
+}
+
+/* 5. PRICING & FAQ: Pure crisp white background */
+#pricing,
+#faq {
+  background: #ffffff !important;
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }

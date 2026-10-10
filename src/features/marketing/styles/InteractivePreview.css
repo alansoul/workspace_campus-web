@@ -1,0 +1,276 @@
+
+/* =========================================================
+   NORTHSTAR — INTERACTIVE PRODUCT SHOWCASE
+   Soft gradient background + premium interactive cards
+   ========================================================= */
+
+.suite-showcase {
+  isolation: isolate;
+  position: relative;
+  color: #1d2035;
+   /* Remove local background so it seamlessly continues the ambient canvas */
+  background: transparent !important;
+}
+
+/* Gradient heading */
+
+.suite-gradient-text {
+  background: linear-gradient(
+    100deg,
+    #2679ff 0%,
+    #7952f5 52%,
+    #d04fc6 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* =========================================================
+   BACKGROUND ORBS
+   ========================================================= */
+
+.suite-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(2px);
+  opacity: 0.55;
+  display: none !important;
+}
+
+.suite-orb-blue {
+  width: 280px;
+  height: 280px;
+  top: 8%;
+  left: -190px;
+  background: radial-gradient(
+    circle,
+    rgb(110 170 255 / 14%),
+    transparent 70%
+  );
+}
+
+.suite-orb-purple {
+  width: 360px;
+  height: 360px;
+  top: 20%;
+  right: -240px;
+  background: radial-gradient(
+    circle,
+    rgb(180 119 255 / 13%),
+    transparent 70%
+  );
+}
+
+.suite-orb-green {
+  width: 260px;
+  height: 260px;
+  bottom: -190px;
+  left: 42%;
+  background: radial-gradient(
+    circle,
+    rgb(107 232 191 / 10%),
+    transparent 70%
+  );
+}
+
+/* =========================================================
+   INTERACTIVE PRODUCT CARDS
+   ========================================================= */
+
+.suite-product-card {
+  --rx: 0deg;
+  --ry: 0deg;
+  --mx: 50%;
+  --my: 50%;
+
+  transform:
+    perspective(1200px)
+    rotateX(var(--rx))
+    rotateY(var(--ry));
+
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+
+  box-shadow:
+    0 2px 5px rgb(35 46 85 / 3%),
+    0 12px 35px rgb(50 58 105 / 4%),
+    inset 0 1px 0 rgb(255 255 255 / 95%);
+
+  animation:
+    suite-card-appear 650ms cubic-bezier(.2, .7, .2, 1) both;
+
+  transition:
+    transform 180ms ease-out,
+    border-color 250ms ease,
+    box-shadow 300ms ease;
+
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Mouse-following glow */
+
+.suite-card-spotlight {
+  z-index: 0;
+  opacity: 0;
+
+  background: radial-gradient(
+    circle at var(--mx) var(--my),
+    var(--card-glow),
+    transparent 52%
+  );
+
+  transition: opacity 300ms ease;
+}
+
+/* Hover elevation */
+
+.suite-product-card:hover {
+  border-color: color-mix(
+    in srgb,
+    var(--card-accent) 30%,
+    white
+  );
+
+  box-shadow:
+    0 20px 50px rgb(49 59 105 / 9%),
+    0 4px 12px rgb(49 59 105 / 4%),
+    inset 0 1px 0 white;
+}
+
+.suite-product-card:hover .suite-card-spotlight,
+.suite-product-card:focus-visible .suite-card-spotlight {
+  opacity: 1;
+}
+
+/* Keyboard accessibility */
+
+.suite-product-card:focus-visible {
+  outline: 3px solid var(--card-accent);
+  outline-offset: 4px;
+}
+
+/* =========================================================
+   PRODUCT PREVIEW PANELS
+   ========================================================= */
+
+.suite-preview-panel {
+  transition:
+    border-color 250ms ease,
+    box-shadow 300ms ease,
+    background-color 300ms ease;
+}
+
+.suite-product-card:hover .suite-preview-panel {
+  border-color: rgb(255 255 255 / 100%);
+
+  box-shadow:
+    0 12px 32px rgb(45 55 100 / 7%),
+    inset 0 1px 0 white;
+}
+
+/* =========================================================
+   FLOATING SVG ICON ILLUSTRATIONS
+   ========================================================= */
+
+.suite-art-ring {
+  border: 1px solid rgb(255 255 255 / 90%);
+
+  background:
+    radial-gradient(
+      circle at 35% 30%,
+      white,
+      transparent 65%
+    ),
+    var(--card-soft);
+
+  box-shadow:
+    0 0 0 10px rgb(255 255 255 / 25%),
+    0 12px 28px var(--card-glow);
+
+  animation: suite-ring-float 5s ease-in-out infinite;
+}
+
+.suite-preview-art {
+  transition:
+    transform 350ms cubic-bezier(.2, .7, .2, 1);
+}
+
+.suite-product-card:hover .suite-preview-art {
+  transform: translateY(-4px) scale(1.04);
+}
+
+/* =========================================================
+   ANIMATIONS
+   ========================================================= */
+
+@keyframes suite-card-appear {
+  from {
+    opacity: 0;
+    translate: 0 16px;
+  }
+
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes suite-ring-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(-4px) scale(1.025);
+  }
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 767px) {
+  .suite-product-card {
+    transform: none;
+  }
+
+  .suite-card-spotlight {
+    display: none;
+  }
+
+  .suite-showcase {
+    padding-top: 4rem;
+    padding-bottom: 4rem;
+  }
+
+  .suite-orb-blue {
+    opacity: 0.35;
+  }
+
+  .suite-orb-purple {
+    opacity: 0.3;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION ACCESSIBILITY
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .suite-product-card,
+  .suite-preview-panel,
+  .suite-preview-art,
+  .suite-art-ring,
+  .suite-card-spotlight {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .suite-product-card {
+    transform: none !important;
+  }
+}

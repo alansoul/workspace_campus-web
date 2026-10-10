@@ -112,7 +112,7 @@ function LoginForm() {
           Create account
         </Link>
         {' · '}
-        <Link href="/university/register" className="text-emerald-400 hover:underline">
+        <Link href="/setup" className="text-emerald-400 hover:underline">
           Register university
         </Link>
       </p>

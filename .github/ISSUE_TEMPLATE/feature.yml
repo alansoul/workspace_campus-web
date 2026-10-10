@@ -1,0 +1,18 @@
+name: 💡 Feature Request
+description: Propose a new feature or capsule improvement for campus-web
+title: '[FEAT]: '
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution or UX
+    validations:
+      required: true

@@ -1,15 +1,18 @@
+// src/proxy.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function proxy(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
+  const accountType = request.cookies.get('account_type')?.value;
+  const userRole = request.cookies.get('user_role')?.value;
   const { pathname, search } = request.nextUrl;
 
-  const PUBLIC_ROUTES = ['/', '/login', '/register', '/university/register'];
+  const PUBLIC_ROUTES = ['/', '/login', '/register', '/setup'];
   const isPublicRoute =
-    PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/university/register/');
+    PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/setup');
 
-  // If already authenticated and visiting public routes, redirect to dashboard
+  // If already authenticated and visiting auth screens, send to dashboard
   if (isPublicRoute) {
     if ((pathname === '/login' || pathname === '/register') && token) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
@@ -32,6 +35,20 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Domain Rule 1: Academics is only for Institutional university emails
+  if (pathname.startsWith('/academics') && accountType === 'INDIVIDUAL') {
+    return NextResponse.redirect(
+      new URL('/dashboard?modal=join-university', request.url)
+    );
+  }
+
+  // Domain Rule 2: Admin console is only for CAMPUS_ADMIN
+  if (pathname.startsWith('/admin') && userRole !== 'CAMPUS_ADMIN' && userRole !== 'SUPER_ADMIN') {
+    return NextResponse.redirect(
+      new URL('/dashboard?error=unauthorized', request.url)
+    );
+  }
+
   return NextResponse.next();
 }
 
@@ -46,6 +63,6 @@ export const config = {
     '/admin/:path*',
     '/login',
     '/register',
-    '/university/register',
+    '/setup/:path*',
   ],
 };

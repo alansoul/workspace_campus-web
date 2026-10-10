@@ -149,7 +149,7 @@ function RegisterForm() {
                   <AlertTriangle className="w-4 h-4 shrink-0" /> Unregistered Campus Domain
                 </div>
                 <Link
-                  href="/university/register"
+                  href="/setup"
                   className="font-semibold text-emerald-400 hover:underline pt-1 block"
                 >
                   Claim portal for your university →

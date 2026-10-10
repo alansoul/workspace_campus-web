@@ -1,0 +1,1 @@
+// Dynamic active state for the sticky pill bar

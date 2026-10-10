@@ -1,0 +1,37 @@
+name: 🐛 Bug Report
+description: Report a bug or rendering issue in campus-web
+title: '[BUG]: '
+labels: ['bug', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: 'Please fill out the details below to help diagnose issues in campus-web.'
+
+  - type: dropdown
+    id: capsule
+    attributes:
+      label: Which Feature Capsule?
+      options:
+        - 'Marketing Landing'
+        - 'Setup Wizard / Onboarding'
+        - 'Academics App'
+        - 'Freelance Marketplace'
+        - 'Campus Chat'
+        - 'Admin Console'
+        - 'Auth & Session Proxy'
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: What steps trigger this problem?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Browser Console Errors
+      render: shell

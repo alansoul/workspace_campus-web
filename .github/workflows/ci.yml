@@ -6,34 +6,33 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     name: Validate Frontend (campus-web)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: 🛒 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9
+      - name: 🛠️ Setup Workspace & Dependencies
+        uses: ./.github/actions/setup-workspace
 
-      - name: ⚙️ Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: 📦 Install Dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: 🧹 Lint Frontend
+      - name: 🧹 Lint Next.js & Tailwind
         run: pnpm lint
+        continue-on-error: false
 
-      - name: 🏗️ Build Frontend
+      - name: 🔍 TypeScript Strict Type Check
+        run: pnpm tsc --noEmit
+
+      - name: 🏗️ Production Next.js Build
         run: pnpm build
         env:
-          NEXT_PUBLIC_API_URL: "http://localhost:4000/api"
-          NEXT_PUBLIC_WS_URL: "http://localhost:4000"
+          NEXT_PUBLIC_API_URL: "https://workspace-campus-api.onrender.com/api"
+          NEXT_PUBLIC_WS_URL: "https://workspace-campus-api.onrender.com"

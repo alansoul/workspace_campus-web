@@ -1,0 +1,19 @@
+# 👑 Frontend Repository Owner
+* @alansoul
+
+# ⚙️ Infrastructure & Proxy Config
+.github/ @alansoul
+package.json @alansoul
+pnpm-lock.yaml @alansoul
+next.config.* @alansoul
+src/proxy.ts @alansoul
+src/lib/ @alansoul
+
+# 🚀 Feature Capsules
+src/features/auth/ @alansoul
+src/features/setup-wizard/ @alansoul
+src/features/academics/ @alansoul
+src/features/freelance/ @alansoul
+src/features/chat/ @alansoul
+src/features/admin/ @alansoul
+src/features/marketing/ @alansoul

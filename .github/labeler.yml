@@ -1,0 +1,48 @@
+'domain: academics':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/features/academics/**'
+          - 'src/app/(workspace)/academics/**'
+
+'domain: freelance':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/features/freelance/**'
+          - 'src/app/(workspace)/freelance/**'
+
+'domain: chat':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/features/chat/**'
+          - 'src/app/(workspace)/chat/**'
+
+'domain: admin':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/features/admin/**'
+          - 'src/app/(workspace)/admin/**'
+
+'domain: auth-identity':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/features/auth/**'
+          - 'src/features/setup-wizard/**'
+          - 'src/app/(auth)/**'
+          - 'src/app/(onboarding)/**'
+
+'domain: marketing':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/features/marketing/**'
+          - 'src/app/(marketing)/**'
+
+'domain: infra':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+          - 'src/lib/**'
+          - 'src/proxy.ts'
+          - 'next.config.*'
+          - 'package.json'
+          - 'pnpm-lock.yaml'
+          - 'tsconfig*.json'
