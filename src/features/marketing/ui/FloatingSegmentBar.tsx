@@ -34,14 +34,31 @@ export function FloatingSegmentBar({
 
       if (!button) return;
 
-      const navRect = nav.getBoundingClientRect();
-      const buttonRect = button.getBoundingClientRect();
+      const buttonLeft = button.offsetLeft;
+      const buttonWidth = button.offsetWidth;
 
-      indicator.style.width = `${buttonRect.width}px`;
-      indicator.style.transform = `translate3d(${
-        buttonRect.left - navRect.left
-      }px, 0, 0)`;
+      indicator.style.width = `${buttonWidth}px`;
+      indicator.style.transform = `translate3d(${buttonLeft}px, 0, 0)`;
       indicator.style.opacity = '1';
+
+      // Keep the active tab visible on mobile.
+      if (window.innerWidth < 640) {
+        const visibleLeft = nav.scrollLeft;
+        const visibleRight = visibleLeft + nav.clientWidth;
+        const buttonRight = buttonLeft + buttonWidth;
+
+        if (buttonLeft < visibleLeft) {
+          nav.scrollTo({
+            left: Math.max(0, buttonLeft - 8),
+            behavior: 'smooth',
+          });
+        } else if (buttonRight > visibleRight) {
+          nav.scrollTo({
+            left: buttonRight - nav.clientWidth + 8,
+            behavior: 'smooth',
+          });
+        }
+      }
     };
 
     updateIndicator();
@@ -62,25 +79,37 @@ export function FloatingSegmentBar({
   }, [activeTab]);
 
   return (
-    <div className="sticky top-16 z-50 flex justify-center px-3 py-3 pointer-events-none">
+    <div
+      className="
+        sticky top-16 z-50
+        flex justify-center
+        px-2 py-3
+        pointer-events-none
+        sm:px-3
+      "
+    >
       <nav
         ref={navRef}
         aria-label="Section navigation"
         className="
-          relative isolate flex w-max max-w-full items-center gap-1
-          overflow-x-auto rounded-full
-          border border-white/80 bg-white/70 p-1.5
-          shadow-[0_8px_32px_rgba(73,76,130,0.10)]
-          backdrop-blur-xl
-          pointer-events-auto
+          relative isolate flex w-max min-w-0
+          max-w-[calc(100vw-32px)]
+          items-center gap-0
+          overflow-x-auto overscroll-x-contain
+          rounded-full border border-white/90
+          bg-white/95 p-1
+          shadow-[0_8px_32px_rgba(73,76,130,0.12)]
+          backdrop-blur-xl pointer-events-auto
+          touch-pan-x
           scrollbar-none [&::-webkit-scrollbar]:hidden
+          sm:max-w-full sm:gap-1 sm:p-1.5
         "
       >
         <span
           ref={indicatorRef}
           aria-hidden="true"
           className="
-            pointer-events-none absolute left-0 top-1.5 bottom-1.5
+            pointer-events-none absolute left-0 top-1 bottom-1
             -z-10 rounded-full bg-[#E8F0FE]
             shadow-[0_1px_3px_rgba(11,87,208,0.08)]
             opacity-0
@@ -88,6 +117,7 @@ export function FloatingSegmentBar({
             duration-200
             ease-[cubic-bezier(0.2,0,0,1)]
             motion-reduce:transition-none
+            sm:top-1.5 sm:bottom-1.5
           "
           style={{
             willChange: 'transform, width',
@@ -107,13 +137,16 @@ export function FloatingSegmentBar({
               aria-current={isActive ? 'location' : undefined}
               onClick={() => onSelect(tab.id)}
               className={`
-                relative z-10 shrink-0 rounded-full bg-transparent
-                px-4 py-2.5 sm:px-6
-                text-sm leading-snug whitespace-nowrap
+                relative z-10 shrink-0
+                rounded-full bg-transparent
+                px-2 py-2.5
+                text-[11px] leading-tight whitespace-nowrap
                 cursor-pointer select-none
                 transition-colors duration-150
                 focus-visible:outline-none
                 focus-visible:ring-2 focus-visible:ring-blue-500
+                sm:px-6 sm:py-2.5
+                sm:text-sm sm:leading-snug
                 ${
                   isActive
                     ? 'font-semibold text-[#0B57D0]'

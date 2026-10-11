@@ -185,12 +185,12 @@ export default function MarketingPage() {
       </section>
 
       {/* Pricing: Clean white background */}
-      <section id="pricing" className="scroll-mt-32.5 bg-white">
+      <section id="pricing" className="scroll-mt-32.5 ">
         <PricingMatrix />
       </section>
 
-      {/* FAQ: Clean white background */}
-      <section id="faq" className="scroll-mt-32.5 bg-white">
+      {/* FAQ: Clean white background */}                                                                  
+      <section id="faq" className="scroll-mt-32.5 ">
         <FaqSection />
       </section>
 
