@@ -1,13 +1,19 @@
 'use client';
 
 
+
+
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+
+
 
 
 interface SegmentBarProps {
   activeTab: string;
   onSelect: (tabId: string) => void;
 }
+
+
 
 
 export function FloatingSegmentBar({
@@ -18,20 +24,25 @@ export function FloatingSegmentBar({
   // MarketingNavbar toggles the `search-modal-open` class on document.body.
   const [searchModalOpen, setSearchModalOpen] = useState(false);
 
+
   useEffect(() => {
     const body = document.body;
+
 
     const syncSearchState = () => {
       setSearchModalOpen(body.classList.contains('search-modal-open'));
     };
 
+
     syncSearchState();
+
 
     const observer = new MutationObserver(syncSearchState);
     observer.observe(body, {
       attributes: true,
       attributeFilter: ['class'],
     });
+
 
     return () => observer.disconnect();
   }, []);
@@ -43,28 +54,44 @@ export function FloatingSegmentBar({
   ];
 
 
+
+
   const navRef = useRef<HTMLElement>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
 
+
+
   useLayoutEffect(() => {
+    if (searchModalOpen) return;
+
     const nav = navRef.current;
     const indicator = indicatorRef.current;
 
 
+
+
     if (!nav || !indicator) return;
+
+
 
 
     const updateIndicator = () => {
       const button = buttonRefs.current[activeTab];
 
 
+
+
       if (!button) return;
+
+
 
 
       const buttonLeft = button.offsetLeft;
       const buttonWidth = button.offsetWidth;
+
+
 
 
       indicator.style.width = `${buttonWidth}px`;
@@ -72,11 +99,15 @@ export function FloatingSegmentBar({
       indicator.style.opacity = '1';
 
 
+
+
       // Keep the active tab visible on mobile.
       if (window.innerWidth < 640) {
         const visibleLeft = nav.scrollLeft;
         const visibleRight = visibleLeft + nav.clientWidth;
         const buttonRight = buttonLeft + buttonWidth;
+
+
 
 
         if (buttonLeft < visibleLeft) {
@@ -94,11 +125,17 @@ export function FloatingSegmentBar({
     };
 
 
+
+
     updateIndicator();
+
+
 
 
     const observer = new ResizeObserver(updateIndicator);
     observer.observe(nav);
+
+
 
 
     Object.values(buttonRefs.current).forEach((button) => {
@@ -106,17 +143,24 @@ export function FloatingSegmentBar({
     });
 
 
+
+
     window.addEventListener('resize', updateIndicator);
+
+
 
 
     return () => {
       observer.disconnect();
       window.removeEventListener('resize', updateIndicator);
     };
-  }, [activeTab]);
+  }, [activeTab, searchModalOpen]);
+
+
 
 
   if (searchModalOpen) return null;
+
 
   return (
     <div
@@ -166,8 +210,12 @@ export function FloatingSegmentBar({
         />
 
 
+
+
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
+
+
 
 
           return (
@@ -205,6 +253,8 @@ export function FloatingSegmentBar({
     </div>
   );
 }
+
+
 
 
 export default FloatingSegmentBar;

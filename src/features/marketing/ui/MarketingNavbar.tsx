@@ -1,7 +1,9 @@
 'use client';
 
 
-import { useState, useRef, useEffect } from 'react';
+
+
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronDown, X, ArrowRight, Search } from 'lucide-react';
@@ -15,9 +17,13 @@ import {
 import { createPortal } from 'react-dom';
 
 
+
+
 interface NavbarProps {
   onScrollTo: (id: string) => void;
 }
+
+
 
 
 type ActiveDropdown =
@@ -28,55 +34,59 @@ type ActiveDropdown =
   | null;
 
 
+
+
 export function MarketingNavbar({ onScrollTo }: NavbarProps) {
   const [activeMenu, setActiveMenu] = useState<ActiveDropdown>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navRef = useRef<HTMLDivElement>(null);
 
-  // FIX: Hide page-level sticky/fixed UI while search is open.
-  // CSS class selectors are not reliable when positioning comes from styles
-  // or component libraries, so detect the actual computed position instead.
-  // The main navbar and the search portal are intentionally left untouched.
-  useEffect(() => {
-    document.body.classList.toggle('search-modal-open', searchOpen);
 
-    if (!searchOpen) {
-      return () => {
-        document.body.classList.remove('search-modal-open');
-      };
+  // Synchronize before paint so mobile browsers never paint the floating bar over the modal.
+  useLayoutEffect(() => {
+    const body = document.body;
+    const html = document.documentElement;
+
+    const previousBodyStyles = {
+      overflow: body.style.overflow,
+      touchAction: body.style.touchAction,
+    };
+    const previousHtmlStyles = {
+      overflow: html.style.overflow,
+      touchAction: html.style.touchAction,
+    };
+
+    body.classList.toggle('search-modal-open', searchOpen);
+    html.classList.toggle('search-modal-open', searchOpen);
+
+    window.dispatchEvent(
+      new CustomEvent('northstar:search-toggle', {
+        detail: { open: searchOpen },
+      })
+    );
+
+    if (searchOpen) {
+      body.style.overflow = 'hidden';
+      body.style.touchAction = 'none';
+      html.style.overflow = 'hidden';
+      html.style.touchAction = 'none';
     }
 
-    const positionedElements = Array.from(
-      document.querySelectorAll<HTMLElement>('body *')
-    ).filter((element) => {
-      if (element.closest('[data-search-modal-portal]')) return false;
-      if (navRef.current?.contains(element)) return false;
-
-      const position = window.getComputedStyle(element).position;
-      return position === 'fixed' || position === 'sticky';
-    });
-
-    const previousVisibility = positionedElements.map((element) => ({
-      element,
-      value: element.style.getPropertyValue('visibility'),
-      priority: element.style.getPropertyPriority('visibility'),
-    }));
-
-    positionedElements.forEach((element) => {
-      element.style.setProperty('visibility', 'hidden', 'important');
-    });
-
     return () => {
-      previousVisibility.forEach(({ element, value, priority }) => {
-        if (value) {
-          element.style.setProperty('visibility', value, priority);
-        } else {
-          element.style.removeProperty('visibility');
-        }
-      });
+      body.style.overflow = previousBodyStyles.overflow;
+      body.style.touchAction = previousBodyStyles.touchAction;
+      html.style.overflow = previousHtmlStyles.overflow;
+      html.style.touchAction = previousHtmlStyles.touchAction;
 
-      document.body.classList.remove('search-modal-open');
+      body.classList.remove('search-modal-open');
+      html.classList.remove('search-modal-open');
+
+      window.dispatchEvent(
+        new CustomEvent('northstar:search-toggle', {
+          detail: { open: false },
+        })
+      );
     };
   }, [searchOpen]);
 
@@ -92,10 +102,14 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
     }
 
 
+
+
     document.addEventListener('mousedown', handleClickOutside);
     return () =>
       document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+
 
 
   // Close menus and search using Escape.
@@ -105,6 +119,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
         setActiveMenu(null);
         setSearchOpen(false);
       }
+
+
 
 
       // Google-style keyboard shortcut for opening search.
@@ -119,10 +135,14 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
     }
 
 
+
+
     document.addEventListener('keydown', handleKeyDown);
     return () =>
       document.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+
 
 
   return (
@@ -130,6 +150,17 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
       ref={navRef}
       className="sticky top-0 z-50 border-b border-[#E8EAED] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
     >
+      {/* Hide the sticky section bar at the CSS level while the search portal is open.
+          This avoids mobile browser compositor layers painting it over the modal. */}
+      <style>{`
+        body.search-modal-open [data-floating-segment-bar],
+        html.search-modal-open [data-floating-segment-bar] {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+      `}</style>
       <header className="flex h-16 w-full items-center justify-between gap-2 bg-white px-3 sm:gap-4 sm:px-5 lg:px-8">
         {/* Brand: always visible on mobile and desktop */}
         <div className="flex min-w-0 flex-1 items-center">
@@ -148,6 +179,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             />
 
 
+
+
             <span className="whitespace-nowrap text-[18px] tracking-[-0.04em] text-[#1F1F1F] sm:text-[20px] sm:tracking-[-0.02em]">
   <span className="font-semibold">Northstar</span>{' '}
   <span className="font-normal text-[#444746]">
@@ -155,6 +188,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
   </span>
 </span>
           </Link>
+
+
 
 
           {/* Desktop navigation */}
@@ -174,6 +209,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             </button>
 
 
+
+
             <button
               type="button"
               onClick={() =>
@@ -187,6 +224,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
               Products
               <ChevronDown className="h-4 w-4" />
             </button>
+
+
 
 
             <button
@@ -204,12 +243,16 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             </button>
 
 
+
+
             <Link
               href="/academics"
               className="rounded-md px-3 py-2 text-[#444746] transition hover:bg-[#F8FAFD] hover:text-[#0B57D0]"
             >
               AI
             </Link>
+
+
 
 
             <button
@@ -222,6 +265,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             >
               Pricing
             </button>
+
+
 
 
             <button
@@ -239,6 +284,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             </button>
           </nav>
         </div>
+
+
 
 
         {/* Actions */}
@@ -265,6 +312,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
 </button>
 
 
+
+
           {/* Desktop/tablet actions: hidden on mobile */}
           <Link
             href="/admin"
@@ -272,6 +321,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
           >
             Admin console
           </Link>
+
+
 
 
           <Link
@@ -282,6 +333,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
           </Link>
 
 
+
+
           <Link
             href="/setup"
             className="hidden h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-[#0B57D0] px-3 text-[12px] font-semibold text-white shadow-sm transition duration-200 hover:bg-[#0842A0] active:scale-[0.98] sm:inline-flex sm:h-10 sm:px-5 sm:text-sm lg:px-6"
@@ -289,6 +342,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             <span className="sm:hidden">Start trial</span>
             <span className="hidden sm:inline">Start Free Trial</span>
           </Link>
+
+
 
 
           <Link
@@ -303,6 +358,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
       </header>
 
 
+
+
       {/* Floating Overlay Mega Menus */}
       {activeMenu && (
         <>
@@ -310,6 +367,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             className="fixed inset-0 top-16 z-40 bg-black/50 transition-opacity"
             onClick={() => setActiveMenu(null)}
           />
+
+
 
 
           <div className="absolute left-0 top-full z-50 w-full animate-in fade-in slide-in-from-top-1 border-b border-[#E8EAED] bg-white shadow-2xl duration-150">
@@ -328,6 +387,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
                     <X className="h-5 w-5" />
                   </button>
                 </div>
+
+
 
 
                 <div className="grid grid-cols-1 gap-10 md:grid-cols-4">
@@ -363,6 +424,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             )}
 
 
+
+
             {activeMenu === 'products' && (
               <div className="mx-auto max-w-7xl px-6 py-10 lg:px-8">
                 <div className="mb-8 flex items-center justify-between border-b border-[#F1F3F4] pb-6">
@@ -378,6 +441,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
                     <X className="h-5 w-5" />
                   </button>
                 </div>
+
+
 
 
                 <div className="grid grid-cols-1 gap-12 md:grid-cols-3">
@@ -413,6 +478,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             )}
 
 
+
+
             {activeMenu === 'enterprise' && (
               <div className="mx-auto max-w-7xl px-6 py-10 lg:px-8">
                 <div className="mb-8 flex items-center justify-between border-b border-[#F1F3F4] pb-6">
@@ -428,6 +495,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
                     <X className="h-5 w-5" />
                   </button>
                 </div>
+
+
 
 
                 <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
@@ -454,6 +523,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
                       </div>
                     ))}
                   </div>
+
+
 
 
                   <div className="grid grid-cols-2 gap-8 border-l border-[#F1F3F4] pl-6 lg:col-span-6">
@@ -483,6 +554,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             )}
 
 
+
+
             {activeMenu === 'resources' && (
               <div className="mx-auto max-w-7xl px-6 py-10 lg:px-8">
                 <div className="mb-8 flex items-center justify-between border-b border-[#F1F3F4] pb-6">
@@ -498,6 +571,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
                     <X className="h-5 w-5" />
                   </button>
                 </div>
+
+
 
 
                 <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
@@ -538,6 +613,10 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
 
 
 
+
+
+
+
      
       {/* AI Search Modal — MOBILE + DESKTOP FIX */}
       {searchOpen &&
@@ -551,10 +630,16 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
               zIndex: 2147483647,
               isolation: 'isolate',
             }}
-            className="flex items-start justify-center overflow-y-auto bg-black/50 px-3 py-4 sm:px-4 sm:py-8"
+            className="fixed inset-0 flex items-start justify-center overflow-y-auto overscroll-contain bg-black/50 px-3 py-4 sm:px-4 sm:py-8"
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) {
                 setSearchOpen(false);
+              }
+            }}
+            onTouchMove={(e) => {
+              // Prevent touch gestures on the backdrop from scrolling the page behind it.
+              if (e.target === e.currentTarget) {
+                e.preventDefault();
               }
             }}
           >
@@ -580,6 +665,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
                 />
 
 
+
+
                 <input
                   type="text"
                   autoFocus
@@ -589,6 +676,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
                   aria-label="Search Northstar Workspace"
                   className="min-w-0 flex-1 bg-transparent text-[15px] text-[#1F1F1F] outline-none placeholder:text-[#747775]"
                 />
+
+
 
 
                 <button
@@ -602,11 +691,15 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
               </div>
 
 
+
+
               {/* Suggested actions */}
               <div className="space-y-4 bg-[#F8FAFD] p-4 sm:p-6">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-[#5F6368]">
                   Suggested Actions
                 </p>
+
+
 
 
                 <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
@@ -620,6 +713,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
                   </Link>
 
 
+
+
                   <Link
                     href="/freelance"
                     onClick={() => setSearchOpen(false)}
@@ -630,6 +725,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
                   </Link>
 
 
+
+
                   <Link
                     href="/chat"
                     onClick={() => setSearchOpen(false)}
@@ -638,6 +735,8 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
                     <Search className="h-5 w-5 shrink-0 text-[#7C4DFF]" />
                     <span>Campus Channel Doubts</span>
                   </Link>
+
+
 
 
                   <Link
@@ -655,6 +754,10 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
           // REQUIRED: Render outside the navbar's stacking context.
           document.body
         )}
+
+
+
+
 
 
 
