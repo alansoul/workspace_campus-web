@@ -1,9 +1,11 @@
 @import "tailwindcss";
 
+
 :root {
   --background: #f8f6ff;
   --foreground: #171717;
 }
+
 
 @theme inline {
   --color-background: var(--background);
@@ -12,10 +14,12 @@
   --font-mono: var(--font-geist-mono);
 }
 
+
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 130px;
 }
+
 
 body {
   margin: 0;
@@ -28,9 +32,11 @@ body {
     sans-serif;
 }
 
+
 /* ==========================================================================
    GLOBAL CONTINUOUS AMBIENT LIGHTING (VIBRANT & SEAMLESS TO FOOTER)
    ========================================================================== */
+
 
 /* 1. HERO & UPPER CANVAS: Boosted pastel saturation */
 .marketing-canvas,
@@ -43,6 +49,7 @@ body {
     linear-gradient(180deg, #edf3ff 0%, #f8f6ff 60%, #f8f6ff 100%) !important;
 }
 
+
 /* 2. APP SHOWCASE DOCK: Smooth blending behind search & app badges */
 .marketing-showcase,
 #included {
@@ -51,6 +58,7 @@ body {
     radial-gradient(ellipse at 80% 60%, rgba(240, 215, 255, 0.80) 0%, transparent 52%),
     linear-gradient(180deg, #f8f6ff 0%, #f5eeff 50%, #f8f6ff 100%) !important;
 }
+
 
 /* 3. MASCOT CAROUSEL (NORTHSTAR HERO): Saturated mesh & specular highlights */
 .northstar-hero {
@@ -64,6 +72,7 @@ body {
   overflow: clip !important;
 }
 
+
 /* 3D Glossy Spheres */
 .hero-orb {
   display: block !important;
@@ -75,10 +84,12 @@ body {
     0 25px 60px rgba(123, 123, 227, 0.20) !important;
 }
 
+
 .hero-orb--bottom {
   opacity: 0.4 !important;
   filter: blur(20px) !important;
 }
+
 
 /* 4. "ONE SUBSCRIPTION" (INTERACTIVE PREVIEW): Vibrant multi-tonal glow */
 .suite-showcase {
@@ -92,11 +103,13 @@ body {
     linear-gradient(180deg, #f8f6ff 0%, #f6f0ff 35%, #faf4ff 70%, #f7f3ff 100%) !important;
 }
 
+
 .suite-orb {
   display: block !important;
   opacity: 0.75 !important;
   filter: blur(40px) !important;
 }
+
 
 /* 5. PRICING SECTION: Continuous ambient glow (White pricing cards pop with contrast) */
 #pricing {
@@ -109,6 +122,7 @@ body {
     linear-gradient(180deg, #f7f3ff 0%, #f8f4ff 50%, #f7f3ff 100%) !important;
 }
 
+
 /* 6. FAQ SECTION: Ambient lighting continuing smoothly into the footer */
 #faq {
   position: relative;
@@ -119,9 +133,39 @@ body {
     linear-gradient(180deg, #f7f3ff 0%, #f4edff 65%, #f8f7fb 100%) !important;
 }
 
+
 /* Respect reduced-motion preferences */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
+}
+
+
+/* ==========================================================================
+   SEARCH MODAL: MOBILE FLOATING NAVIGATION OVERLAP FIX
+   ========================================================================== */
+
+/*
+ * While the search dialog is open, hide page-level sticky/fixed controls.
+ * The portal itself is excluded, so the search dialog and its controls remain
+ * visible and interactive on both mobile and desktop.
+ */
+body.search-modal-open [class*="sticky"]:not([data-search-modal-portal]),
+body.search-modal-open [class*="fixed"]:not([data-search-modal-portal]) {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Keep the search portal above the page UI. */
+body.search-modal-open [data-search-modal-portal] {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483647 !important;
+  isolation: isolate !important;
+}
+
+/* Prevent background scrolling while the dialog is open. */
+body.search-modal-open {
+  overflow: hidden;
 }

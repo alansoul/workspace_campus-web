@@ -1,5 +1,5 @@
-
 'use client';
+
 
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
@@ -12,10 +12,13 @@ import {
   ENTERPRISE_MENU,
   RESOURCES_MENU,
 } from '../data/navigation.data';
+import { createPortal } from 'react-dom';
+
 
 interface NavbarProps {
   onScrollTo: (id: string) => void;
 }
+
 
 type ActiveDropdown =
   | 'solutions'
@@ -24,11 +27,58 @@ type ActiveDropdown =
   | 'resources'
   | null;
 
+
 export function MarketingNavbar({ onScrollTo }: NavbarProps) {
   const [activeMenu, setActiveMenu] = useState<ActiveDropdown>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navRef = useRef<HTMLDivElement>(null);
+
+  // FIX: Hide page-level sticky/fixed UI while search is open.
+  // CSS class selectors are not reliable when positioning comes from styles
+  // or component libraries, so detect the actual computed position instead.
+  // The main navbar and the search portal are intentionally left untouched.
+  useEffect(() => {
+    document.body.classList.toggle('search-modal-open', searchOpen);
+
+    if (!searchOpen) {
+      return () => {
+        document.body.classList.remove('search-modal-open');
+      };
+    }
+
+    const positionedElements = Array.from(
+      document.querySelectorAll<HTMLElement>('body *')
+    ).filter((element) => {
+      if (element.closest('[data-search-modal-portal]')) return false;
+      if (navRef.current?.contains(element)) return false;
+
+      const position = window.getComputedStyle(element).position;
+      return position === 'fixed' || position === 'sticky';
+    });
+
+    const previousVisibility = positionedElements.map((element) => ({
+      element,
+      value: element.style.getPropertyValue('visibility'),
+      priority: element.style.getPropertyPriority('visibility'),
+    }));
+
+    positionedElements.forEach((element) => {
+      element.style.setProperty('visibility', 'hidden', 'important');
+    });
+
+    return () => {
+      previousVisibility.forEach(({ element, value, priority }) => {
+        if (value) {
+          element.style.setProperty('visibility', value, priority);
+        } else {
+          element.style.removeProperty('visibility');
+        }
+      });
+
+      document.body.classList.remove('search-modal-open');
+    };
+  }, [searchOpen]);
 
   // Close menus when clicking outside the navbar.
   useEffect(() => {
@@ -41,10 +91,12 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
       }
     }
 
+
     document.addEventListener('mousedown', handleClickOutside);
     return () =>
       document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
 
   // Close menus and search using Escape.
   useEffect(() => {
@@ -53,6 +105,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
         setActiveMenu(null);
         setSearchOpen(false);
       }
+
 
       // Google-style keyboard shortcut for opening search.
       if (
@@ -65,10 +118,12 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
       }
     }
 
+
     document.addEventListener('keydown', handleKeyDown);
     return () =>
       document.removeEventListener('keydown', handleKeyDown);
   }, []);
+
 
   return (
     <div
@@ -92,6 +147,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
               className="h-10 w-10 shrink-0 object-contain sm:h-10 sm:w-10"
             />
 
+
             <span className="whitespace-nowrap text-[18px] tracking-[-0.04em] text-[#1F1F1F] sm:text-[20px] sm:tracking-[-0.02em]">
   <span className="font-semibold">Northstar</span>{' '}
   <span className="font-normal text-[#444746]">
@@ -99,6 +155,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
   </span>
 </span>
           </Link>
+
 
           {/* Desktop navigation */}
           <nav className="ml-5 hidden items-center gap-1 text-sm font-medium lg:flex xl:ml-8 xl:gap-2">
@@ -116,6 +173,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
               <ChevronDown className="h-4 w-4" />
             </button>
 
+
             <button
               type="button"
               onClick={() =>
@@ -129,6 +187,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
               Products
               <ChevronDown className="h-4 w-4" />
             </button>
+
 
             <button
               type="button"
@@ -144,12 +203,14 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
               <ChevronDown className="h-4 w-4" />
             </button>
 
+
             <Link
               href="/academics"
               className="rounded-md px-3 py-2 text-[#444746] transition hover:bg-[#F8FAFD] hover:text-[#0B57D0]"
             >
               AI
             </Link>
+
 
             <button
               type="button"
@@ -161,6 +222,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             >
               Pricing
             </button>
+
 
             <button
               type="button"
@@ -177,6 +239,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             </button>
           </nav>
         </div>
+
 
         {/* Actions */}
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-3 lg:gap-4">
@@ -201,6 +264,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
   />
 </button>
 
+
           {/* Desktop/tablet actions: hidden on mobile */}
           <Link
             href="/admin"
@@ -209,12 +273,14 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             Admin console
           </Link>
 
+
           <Link
             href="/setup"
             className="hidden whitespace-nowrap rounded-full px-3 py-2.5 text-sm text-[#444746] transition hover:bg-[#F1F3F4] sm:inline-block"
           >
             Contact sales
           </Link>
+
 
           <Link
             href="/setup"
@@ -223,6 +289,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             <span className="sm:hidden">Start trial</span>
             <span className="hidden sm:inline">Start Free Trial</span>
           </Link>
+
 
           <Link
             href="/dashboard"
@@ -235,6 +302,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
         </div>
       </header>
 
+
       {/* Floating Overlay Mega Menus */}
       {activeMenu && (
         <>
@@ -242,6 +310,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             className="fixed inset-0 top-16 z-40 bg-black/50 transition-opacity"
             onClick={() => setActiveMenu(null)}
           />
+
 
           <div className="absolute left-0 top-full z-50 w-full animate-in fade-in slide-in-from-top-1 border-b border-[#E8EAED] bg-white shadow-2xl duration-150">
             {activeMenu === 'solutions' && (
@@ -259,6 +328,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
                     <X className="h-5 w-5" />
                   </button>
                 </div>
+
 
                 <div className="grid grid-cols-1 gap-10 md:grid-cols-4">
                   {SOLUTIONS_MENU.columns.map((col, idx) => (
@@ -292,6 +362,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
               </div>
             )}
 
+
             {activeMenu === 'products' && (
               <div className="mx-auto max-w-7xl px-6 py-10 lg:px-8">
                 <div className="mb-8 flex items-center justify-between border-b border-[#F1F3F4] pb-6">
@@ -307,6 +378,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
                     <X className="h-5 w-5" />
                   </button>
                 </div>
+
 
                 <div className="grid grid-cols-1 gap-12 md:grid-cols-3">
                   {PRODUCTS_MENU.columns.map((col, idx) => (
@@ -340,6 +412,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
               </div>
             )}
 
+
             {activeMenu === 'enterprise' && (
               <div className="mx-auto max-w-7xl px-6 py-10 lg:px-8">
                 <div className="mb-8 flex items-center justify-between border-b border-[#F1F3F4] pb-6">
@@ -355,6 +428,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
                     <X className="h-5 w-5" />
                   </button>
                 </div>
+
 
                 <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
                   <div className="space-y-4 lg:col-span-6">
@@ -380,6 +454,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
                       </div>
                     ))}
                   </div>
+
 
                   <div className="grid grid-cols-2 gap-8 border-l border-[#F1F3F4] pl-6 lg:col-span-6">
                     {ENTERPRISE_MENU.columns.map((col, idx) => (
@@ -407,6 +482,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
               </div>
             )}
 
+
             {activeMenu === 'resources' && (
               <div className="mx-auto max-w-7xl px-6 py-10 lg:px-8">
                 <div className="mb-8 flex items-center justify-between border-b border-[#F1F3F4] pb-6">
@@ -422,6 +498,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
                     <X className="h-5 w-5" />
                   </button>
                 </div>
+
 
                 <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
                   {RESOURCES_MENU.columns.map((col, idx) => (
@@ -458,92 +535,130 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
         </>
       )}
 
-      {/* AI Search Modal */}
-      {searchOpen && (
-        <div
-          className="fixed inset-0 z-60 flex items-start justify-center bg-black/50 px-4 pt-20 sm:pt-24"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) {
-              setSearchOpen(false);
-            }
-          }}
-        >
-          <div className="w-full max-w-2xl animate-in fade-in zoom-in-95 overflow-hidden rounded-3xl border border-[#DADCE0] bg-white shadow-2xl duration-150">
-            <div className="flex items-center gap-3 border-b border-[#E8EAED] p-4">
-              <Image
-                src="/icons/northstar-premium-search.svg"
-                alt=""
-                width={30}
-                height={30}
-                className="h-7 w-7 shrink-0 object-contain"
-              />
 
-              <input
-                type="text"
-                autoFocus
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search Northstar Workspace..."
-                aria-label="Search Northstar Workspace"
-                className="min-w-0 flex-1 text-[15px] text-[#1F1F1F] placeholder:text-[#747775] focus:outline-none"
-              />
 
-              <button
-                type="button"
-                onClick={() => setSearchOpen(false)}
-                aria-label="Close search"
-                className="shrink-0 cursor-pointer rounded-full p-1.5 text-[#5F6368] transition hover:bg-[#F1F3F4]"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
 
-            <div className="space-y-4 bg-[#F8FAFD] p-4 sm:p-6">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-[#5F6368]">
-                Suggested Actions
-              </p>
+     
+      {/* AI Search Modal — MOBILE + DESKTOP FIX */}
+      {searchOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            data-search-modal-portal
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 2147483647,
+              isolation: 'isolate',
+            }}
+            className="flex items-start justify-center overflow-y-auto bg-black/50 px-3 py-4 sm:px-4 sm:py-8"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) {
+                setSearchOpen(false);
+              }
+            }}
+          >
+            {/* Modal panel */}
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Search Northstar Workspace"
+              style={{
+                position: 'relative',
+                zIndex: 2147483647,
+              }}
+              className="w-full max-w-2xl animate-in fade-in zoom-in-95 overflow-hidden rounded-3xl border border-[#DADCE0] bg-white shadow-2xl duration-150"
+            >
+              {/* Search input header */}
+              <div className="flex min-h-17 items-center gap-3 border-b border-[#E8EAED] p-3 sm:p-4">
+                <Image
+                  src="/icons/northstar-premium-search.svg"
+                  alt=""
+                  width={30}
+                  height={30}
+                  className="h-7 w-7 shrink-0 object-contain"
+                />
 
-              <div className="grid grid-cols-1 gap-2 text-[13px] sm:grid-cols-2">
-                <Link
-                  href="/academics"
+
+                <input
+                  type="text"
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search Northstar Workspace..."
+                  aria-label="Search Northstar Workspace"
+                  className="min-w-0 flex-1 bg-transparent text-[15px] text-[#1F1F1F] outline-none placeholder:text-[#747775]"
+                />
+
+
+                <button
+                  type="button"
                   onClick={() => setSearchOpen(false)}
-                  className="flex items-center gap-2 rounded-xl border border-[#E8EAED] bg-white p-3 text-[#1F1F1F] transition hover:border-[#0B57D0]"
+                  aria-label="Close search"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#5F6368] transition hover:bg-[#F1F3F4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 >
-                  <Search className="h-4 w-4 shrink-0 text-[#0B57D0]" />
-                  Search Unit Notes
-                </Link>
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
 
-                <Link
-                  href="/freelance"
-                  onClick={() => setSearchOpen(false)}
-                  className="flex items-center gap-2 rounded-xl border border-[#E8EAED] bg-white p-3 text-[#1F1F1F] transition hover:border-[#0B57D0]"
-                >
-                  <Search className="h-4 w-4 shrink-0 text-[#00C853]" />
-                  Find Escrow Gigs
-                </Link>
 
-                <Link
-                  href="/chat"
-                  onClick={() => setSearchOpen(false)}
-                  className="flex items-center gap-2 rounded-xl border border-[#E8EAED] bg-white p-3 text-[#1F1F1F] transition hover:border-[#0B57D0]"
-                >
-                  <Search className="h-4 w-4 shrink-0 text-[#7C4DFF]" />
-                  Campus Channel Doubts
-                </Link>
+              {/* Suggested actions */}
+              <div className="space-y-4 bg-[#F8FAFD] p-4 sm:p-6">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#5F6368]">
+                  Suggested Actions
+                </p>
 
-                <Link
-                  href="/admin"
-                  onClick={() => setSearchOpen(false)}
-                  className="flex items-center gap-2 rounded-xl border border-[#E8EAED] bg-white p-3 text-[#1F1F1F] transition hover:border-[#0B57D0]"
-                >
-                  <Search className="h-4 w-4 shrink-0 text-[#EA4335]" />
-                  Admin Verification
-                </Link>
+
+                <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                  <Link
+                    href="/academics"
+                    onClick={() => setSearchOpen(false)}
+                    className="flex min-h-12 items-center gap-3 rounded-xl border border-[#E8EAED] bg-white p-3 text-[#1F1F1F] transition-colors hover:border-[#0B57D0] hover:bg-[#F8FAFF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  >
+                    <Search className="h-5 w-5 shrink-0 text-[#0B57D0]" />
+                    <span>Search Unit Notes</span>
+                  </Link>
+
+
+                  <Link
+                    href="/freelance"
+                    onClick={() => setSearchOpen(false)}
+                    className="flex min-h-12 items-center gap-3 rounded-xl border border-[#E8EAED] bg-white p-3 text-[#1F1F1F] transition-colors hover:border-[#0B57D0] hover:bg-[#F8FAFF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  >
+                    <Search className="h-5 w-5 shrink-0 text-[#00C853]" />
+                    <span>Find Escrow Gigs</span>
+                  </Link>
+
+
+                  <Link
+                    href="/chat"
+                    onClick={() => setSearchOpen(false)}
+                    className="flex min-h-12 items-center gap-3 rounded-xl border border-[#E8EAED] bg-white p-3 text-[#1F1F1F] transition-colors hover:border-[#0B57D0] hover:bg-[#F8FAFF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  >
+                    <Search className="h-5 w-5 shrink-0 text-[#7C4DFF]" />
+                    <span>Campus Channel Doubts</span>
+                  </Link>
+
+
+                  <Link
+                    href="/admin"
+                    onClick={() => setSearchOpen(false)}
+                    className="flex min-h-12 items-center gap-3 rounded-xl border border-[#E8EAED] bg-white p-3 text-[#1F1F1F] transition-colors hover:border-[#0B57D0] hover:bg-[#F8FAFF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  >
+                    <Search className="h-5 w-5 shrink-0 text-[#EA4335]" />
+                    <span>Admin Verification</span>
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          // REQUIRED: Render outside the navbar's stacking context.
+          document.body
+        )}
+
+
+
+
     </div>
   );
 }
