@@ -1,9 +1,10 @@
-import type { Metadata } from 'next';
+// src/app/layout.tsx
 import './globals.css';
+import { AuthProvider } from '@/features/auth/hooks/useAuthSession';
 
-export const metadata: Metadata = {
+export const metadata = {
   title: 'Northstar Workspace',
-  description: 'The All-in-One University Portal',
+  description: 'The all-in-one university workspace',
 };
 
 export default function RootLayout({
@@ -12,17 +13,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.cdnfonts.com/css/google-sans"
-        />
-      </head>
-      <body className="min-h-full flex flex-col bg-white text-[#1F1F1F] font-['Google_Sans',sans-serif]">
-        {children}
+    <html lang="en">
+      <body className="antialiased bg-white text-slate-900">
+        {/* AuthProvider wraps the whole app so login, dashboard, and header can access session */}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
