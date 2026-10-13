@@ -8,11 +8,6 @@
     "start": "next start",
     "lint": "eslint"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "unrs-resolver"
-    ]
-  },
   "dependencies": {
     "clsx": "^2.1.1",
     "framer-motion": "^14.0.0",
