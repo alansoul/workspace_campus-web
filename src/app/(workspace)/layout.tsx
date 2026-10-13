@@ -1,80 +1,81 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import React from 'react';
 import Link from 'next/link';
-import { User } from '@/types';
+import { usePathname } from 'next/navigation';
+import { useAuthSession } from '@/features/auth/hooks/useAuthSession';
 import { AppLauncher } from '@/components/layout/AppLauncher';
-import { GraduationCap, LogOut } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
-
-function subscribe(cb: () => void) {
-  window.addEventListener('storage', cb);
-  return () => window.removeEventListener('storage', cb);
-}
-function getSnap() { return localStorage.getItem('user'); }
-function getServerSnap() { return null; }
+import { UserProfileMenu } from '@/components/layout/UserProfileMenu';
 
 export default function SuiteLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
-  const rawUser = useSyncExternalStore(subscribe, getSnap, getServerSnap);
+  const { user, isLoading, isAuthenticated } = useAuthSession();
 
-  let user: User | null = null;
-  if (rawUser) {
-    try { user = JSON.parse(rawUser) as User; } catch {}
+  // 1. Modern Branded Loading Screen (Replaces pitch-black screen on refresh)
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFD] flex flex-col items-center justify-center select-none font-['Google_Sans',sans-serif]">
+        <div className="flex flex-col items-center gap-4 animate-in fade-in duration-300">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-blue-600 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-indigo-500/20 animate-pulse">
+            ✦
+          </div>
+          <div className="text-center space-y-1">
+            <h3 className="text-base font-semibold text-slate-800 tracking-tight">
+              Northstar Workspace
+            </h3>
+            <p className="text-xs text-slate-400 font-medium">
+              Initializing workspace session...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  async function logout() {
-  try {
-    await apiFetch('/auth/logout', { method: 'POST' });
-  } catch {
-    // Continue cleanup even if network fails
+  // 2. Unauthenticated Visitor -> Render child page without app shell
+  if (!isAuthenticated || !user) {
+    return <>{children}</>;
   }
-  localStorage.removeItem('user');
-  window.dispatchEvent(new Event('storage'));
-  router.push('/login');
-}
 
+  // 3. Resolve Current App Name for Top Breadcrumb
   const currentApp =
-    pathname.startsWith('/academics') ? 'Academics' :
-    pathname.startsWith('/freelance') ? 'Freelance' :
+    pathname.startsWith('/academics') ? 'Academics & Drive' :
+    pathname.startsWith('/freelance') ? 'Freelance Hub' :
     pathname.startsWith('/chat') ? 'Campus Chat' :
     pathname.startsWith('/admin') ? 'Admin Console' :
+    pathname.startsWith('/settings') ? 'Settings' :
     'Dashboard';
 
+  const universityTitle = user.universityName || 'Campus Workspace';
+
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <header className="h-14 border-b border-slate-800 bg-slate-900/80 backdrop-blur flex items-center justify-between px-6 sticky top-0 z-40">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="p-1.5 bg-blue-600/20 text-blue-400 rounded-lg">
-              <GraduationCap className="w-5 h-5" />
+    <div className="min-h-screen bg-[#F8FAFD] text-slate-900 flex flex-col font-['Google_Sans',sans-serif]">
+      {/* Universal Workspace Header Bar */}
+      <header className="h-14 border-b border-slate-800 bg-[#0E1525] text-white flex items-center justify-between px-4 sm:px-6 sticky top-0 z-40 select-none">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0 group cursor-pointer">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-xs group-hover:scale-105 transition-transform">
+              ✦
             </div>
-            <span className="font-bold text-sm">
-              {user?.universityName || 'Campus Workspace'}
+            <span className="font-semibold text-sm tracking-tight text-white group-hover:text-cyan-300 transition-colors truncate max-w-[200px] sm:max-w-xs">
+              {universityTitle}
             </span>
           </Link>
           <span className="text-slate-600">/</span>
-          <span className="text-xs text-slate-300 font-semibold">{currentApp}</span>
+          <span className="text-xs text-slate-300 font-medium truncate">{currentApp}</span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <AppLauncher userRole={user?.role || 'STUDENT'} />
-          <div className="w-8 h-8 rounded-full bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-xs font-bold text-blue-300">
-            {user?.fullName?.[0]?.toUpperCase() || 'U'}
-          </div>
-          <button
-            onClick={logout}
-            className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition"
-            title="Sign out"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+        <div className="flex items-center gap-3 shrink-0">
+          {/* 9-Dot App Launcher */}
+          <AppLauncher userRole={user.role || 'STUDENT'} />
+
+          {/* User Profile Avatar & Dropdown Menu */}
+          <UserProfileMenu />
         </div>
       </header>
 
-      <main>{children}</main>
+      {/* Main Workspace Page View */}
+      <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
   );
 }

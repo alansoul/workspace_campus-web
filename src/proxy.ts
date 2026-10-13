@@ -1,6 +1,18 @@
-// src/proxy.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+
+function getSafeRedirectUrl(target: string | null): string {
+  if (!target) return '/dashboard';
+  // Relative paths only — block open redirects
+  if (
+    target.startsWith('/') &&
+    !target.startsWith('//') &&
+    !target.startsWith('/\\')
+  ) {
+    return target;
+  }
+  return '/dashboard';
+}
 
 export function proxy(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
@@ -8,45 +20,43 @@ export function proxy(request: NextRequest) {
   const userRole = request.cookies.get('user_role')?.value;
   const { pathname, search } = request.nextUrl;
 
-  const PUBLIC_ROUTES = ['/', '/login', '/register', '/setup'];
-  const isPublicRoute =
-    PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/setup');
-
-  // If already authenticated and visiting auth screens, send to dashboard
-  if (isPublicRoute) {
-    if ((pathname === '/login' || pathname === '/register') && token) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-    return NextResponse.next();
+  // 1. Authenticated users visiting auth routes are redirected to their dashboard
+  if ((pathname === '/login' || pathname === '/register') && token) {
+    const redirectParam = request.nextUrl.searchParams.get('redirect');
+    return NextResponse.redirect(
+      new URL(getSafeRedirectUrl(redirectParam), request.url),
+    );
   }
 
-  // Protected workspace routes
-  const isProtected =
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/academics') ||
-    pathname.startsWith('/freelance') ||
-    pathname.startsWith('/chat') ||
-    pathname.startsWith('/admin');
+  // 2. Private routes gate
+  const isStrictlyPrivate =
+    pathname.startsWith('/dashboard') || pathname.startsWith('/admin');
 
-  // Deep-Link Interception: Preserve destination when redirecting to login
-  if (isProtected && !token) {
+  if (isStrictlyPrivate && !token) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname + search);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Domain Rule 1: Academics is only for Institutional university emails
-  if (pathname.startsWith('/academics') && accountType === 'INDIVIDUAL') {
+  // 3. 🔒 STRICT ACADEMICS GATE: Personal accounts (INDIVIDUAL) cannot access /academics OR /academics/*
+  if (
+    token &&
+    accountType === 'INDIVIDUAL' &&
+    (pathname === '/academics' || pathname.startsWith('/academics/'))
+  ) {
     return NextResponse.redirect(
-      new URL('/dashboard?modal=join-university', request.url)
+      new URL('/dashboard?modal=link-campus&from=academics', request.url),
     );
   }
 
-  // Domain Rule 2: Admin console is only for CAMPUS_ADMIN
-  if (pathname.startsWith('/admin') && userRole !== 'CAMPUS_ADMIN' && userRole !== 'SUPER_ADMIN') {
-    return NextResponse.redirect(
-      new URL('/dashboard?error=unauthorized', request.url)
-    );
+  // 4. Admin role gate
+  if (pathname.startsWith('/admin') && token) {
+    const allowedRoles = ['ADMIN', 'CAMPUS_ADMIN', 'SUPER_ADMIN'];
+    if (!userRole || !allowedRoles.includes(userRole)) {
+      return NextResponse.redirect(
+        new URL('/dashboard?error=unauthorized', request.url),
+      );
+    }
   }
 
   return NextResponse.next();
@@ -57,10 +67,11 @@ export default proxy;
 export const config = {
   matcher: [
     '/dashboard/:path*',
+    '/admin/:path*',
+    '/academics',
     '/academics/:path*',
     '/freelance/:path*',
     '/chat/:path*',
-    '/admin/:path*',
     '/login',
     '/register',
     '/setup/:path*',

@@ -1,6 +1,7 @@
 // src/app/layout.tsx
 import './globals.css';
 import { AuthProvider } from '@/features/auth/hooks/useAuthSession';
+import { Toaster } from 'sonner';
 
 export const metadata = {
   title: 'Northstar Workspace',
@@ -18,6 +19,8 @@ export default function RootLayout({
         {/* AuthProvider wraps the whole app so login, dashboard, and header can access session */}
         <AuthProvider>
           {children}
+          {/* 🔔 Clean Toast Notification Container */}
+          <Toaster position="top-right" richColors />
         </AuthProvider>
       </body>
     </html>

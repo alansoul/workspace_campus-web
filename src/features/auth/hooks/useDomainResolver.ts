@@ -1,4 +1,3 @@
-// src/features/auth/hooks/useDomainResolver.ts
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,7 +12,8 @@ export function useDomainResolver(email: string) {
     let isSubscribed = true;
 
     const timer = setTimeout(async () => {
-      const parts = email.trim().split('@');
+      const cleanEmail = email.trim().toLowerCase();
+      const parts = cleanEmail.split('@');
 
       if (parts.length !== 2 || !parts[1].includes('.')) {
         if (isSubscribed) {
@@ -23,28 +23,93 @@ export function useDomainResolver(email: string) {
         return;
       }
 
-      const domain = parts[1].toLowerCase();
-      const personalProviders = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com'];
+      const domain = parts[1];
 
-      if (personalProviders.includes(domain)) {
+      // RULE 1: Personal @gmail.com is allowed as Individual account
+      if (domain === 'gmail.com') {
         if (isSubscribed) {
-          setResolution({ isRegistered: false });
+          setResolution({
+            allowed: true,
+            domain: 'gmail.com',
+            isGmail: true,
+            isUniversity: false,
+            isRegistered: true,
+          });
           setIsResolving(false);
         }
         return;
       }
 
+      // RULE 2: Non-Gmail personal providers are blocked immediately
+      const blockedPersonalProviders = [
+        'yahoo.com',
+        'outlook.com',
+        'hotmail.com',
+        'icloud.com',
+        'aol.com',
+        'protonmail.com',
+        'mailinator.com',
+        'tempmail.com',
+        'yopmail.com',
+      ];
+
+      if (blockedPersonalProviders.includes(domain)) {
+        if (isSubscribed) {
+          setResolution({
+            allowed: false,
+            domain,
+            isGmail: false,
+            isUniversity: false,
+            isRegistered: false,
+            errorMessage: 'Only @gmail.com or admin-registered campus domains are allowed.',
+          });
+          setIsResolving(false);
+        }
+        return;
+      }
+
+      // RULE 3: University / Campus domain -> Query backend API
       if (isSubscribed) setIsResolving(true);
 
       try {
-        const res = await authService.resolveDomain(email);
-        if (isSubscribed) setResolution(res);
+        const res = (await authService.resolveDomain(cleanEmail)) as DomainResolution;
+        if (!isSubscribed) return;
+
+        if (res.allowed && res.university) {
+          setResolution({
+            allowed: true,
+            domain: res.domain || domain,
+            isGmail: false,
+            isUniversity: true,
+            isRegistered: true,
+            universityName: res.university.name,
+            university: res.university,
+          });
+        } else {
+          setResolution({
+            allowed: false,
+            domain,
+            isGmail: false,
+            isUniversity: true,
+            isRegistered: false,
+            errorMessage: 'This university domain is not registered by an administrator.',
+          });
+        }
       } catch {
-        if (isSubscribed) setResolution({ isRegistered: false });
+        if (isSubscribed) {
+          setResolution({
+            allowed: false,
+            domain,
+            isGmail: false,
+            isUniversity: false,
+            isRegistered: false,
+            errorMessage: 'Unable to verify domain. Please try again.',
+          });
+        }
       } finally {
         if (isSubscribed) setIsResolving(false);
       }
-    }, 350);
+    }, 300);
 
     return () => {
       isSubscribed = false;

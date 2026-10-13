@@ -9,7 +9,7 @@ import { setupService } from '../services/setup.service';
 interface StepVerifyProps {
   formData: SetupFormData;
   updateFields: (fields: Partial<SetupFormData>) => void;
-  onSubmit: () => Promise<void>;
+  onSubmit: (overrides?: Partial<SetupFormData>) => Promise<void>;
   onBack: () => void;
   isSubmitting: boolean;
   error: string | null;
@@ -38,20 +38,16 @@ export function StepVerify({
   const [otp, setOtp] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
   const [otpNotice, setOtpNotice] = useState<string | null>(null);
   const [otpLoading, setOtpLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
-  const cleanDomain = cleanDomainString(formData.universityDomain) || 'alantech.com';
+  const cleanDomain = cleanDomainString(formData.universityDomain) || 'stanford.edu';
   const constructedEmail = `${username.trim().toLowerCase()}@${cleanDomain}`;
 
-  // Cooldown countdown timer for resending OTP
   useEffect(() => {
     if (cooldown <= 0) return;
-    const timer = setInterval(() => {
-      setCooldown((prev) => prev - 1);
-    }, 1000);
+    const timer = setInterval(() => setCooldown((p) => p - 1), 1000);
     return () => clearInterval(timer);
   }, [cooldown]);
 
@@ -69,13 +65,13 @@ export function StepVerify({
     setOtpNotice(null);
     try {
       await setupService.requestVerificationOtp(constructedEmail, cleanDomain);
-      setCooldown(60); // 60-second cooldown
-      setOtpNotice(`Verification code sent to ${constructedEmail}. Please check your inbox.`);
+      setCooldown(60);
+      setOtpNotice(`Verification code sent to ${constructedEmail} (and your verified Gmail inbox).`);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setOtpNotice(err.message);
       } else {
-        setOtpNotice('Failed to request verification code. Please try again.');
+        setOtpNotice('Failed to request verification code.');
       }
     } finally {
       setOtpLoading(false);
@@ -86,14 +82,21 @@ export function StepVerify({
     e.preventDefault();
     if (!canSubmit) return;
 
-    updateFields({
+    // Generate short code directly from current domain/org to avoid collision
+    const dynamicShortCode =
+      cleanDomain.split('.')[0]?.toUpperCase().slice(0, 4) || 'CAMP';
+
+    const payloadOverrides: Partial<SetupFormData> = {
       universityDomain: cleanDomain,
       adminPassword: password,
       currentEmail: constructedEmail,
       otpCode: otp.trim(),
-    });
+      shortCode: dynamicShortCode,
+    };
 
-    await onSubmit();
+    updateFields(payloadOverrides);
+    // Pass overrides directly so submission never uses stale state
+    await onSubmit(payloadOverrides);
   };
 
   return (
@@ -120,7 +123,6 @@ export function StepVerify({
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5 pt-2">
-        {/* Username + @domain */}
         <div className="space-y-1">
           <div className="flex items-center border border-[#747775] focus-within:ring-2 focus-within:ring-[#0B57D0] focus-within:border-transparent rounded-lg px-3 py-2.5 transition bg-white">
             <input
@@ -143,7 +145,6 @@ export function StepVerify({
           </div>
         </div>
 
-        {/* Password */}
         <div className="space-y-1">
           <div className="flex items-center border border-[#747775] focus-within:ring-2 focus-within:ring-[#0B57D0] focus-within:border-transparent rounded-lg px-3 py-2.5 transition bg-white">
             <input
@@ -169,7 +170,6 @@ export function StepVerify({
           </div>
         </div>
 
-        {/* Confirm Password */}
         <div className="space-y-1">
           <div className="flex items-center border border-[#747775] focus-within:ring-2 focus-within:ring-[#0B57D0] focus-within:border-transparent rounded-lg px-3 py-2.5 transition bg-white">
             <input
@@ -195,7 +195,6 @@ export function StepVerify({
           </div>
         </div>
 
-        {/* 6-Digit OTP Field with Cooldown */}
         <div className="space-y-1 pt-1">
           <div className="flex gap-2">
             <input
@@ -213,26 +212,20 @@ export function StepVerify({
               disabled={otpLoading || cooldown > 0}
               className="px-4 py-2.5 rounded-lg border border-[#0B57D0] text-[#0B57D0] hover:bg-[#F8FAFD] text-xs font-semibold whitespace-nowrap transition cursor-pointer disabled:opacity-50"
             >
-              {otpLoading
-                ? 'Sending...'
-                : cooldown > 0
-                ? `Resend in ${cooldown}s`
-                : 'Get code'}
+              {otpLoading ? 'Sending...' : cooldown > 0 ? `Resend in ${cooldown}s` : 'Get code'}
             </button>
           </div>
           <p className="text-[11px] text-[#5F6368] px-1">
-            Click &quot;Get code&quot; to receive the 6-digit verification code in your email inbox.
+            Click &quot;Get code&quot; to receive the code via email (or check terminal logs).
           </p>
         </div>
 
-        {/* Disclaimer */}
         <p className="text-[11px] text-[#5F6368] leading-relaxed pt-2">
           By clicking <strong className="text-[#1F1F1F]">Agree and continue</strong>, you agree to the{' '}
           <span className="text-[#0B57D0] hover:underline cursor-pointer">Northstar Workspace Agreement</span> and{' '}
           <span className="text-[#0B57D0] hover:underline cursor-pointer">Supplemental Terms and Conditions</span>.
         </p>
 
-        {/* Buttons */}
         <div className="flex items-center gap-4 pt-3">
           <button
             type="button"

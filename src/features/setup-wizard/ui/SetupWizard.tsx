@@ -60,12 +60,13 @@ export function SetupWizard() {
     });
   };
 
-  // Final step: Persist to database via campus-api
-  const handleFinalSubmit = async () => {
+  // Final step: Persist to database using fresh payload overrides
+  const handleFinalSubmit = async (overrides?: Partial<SetupFormData>) => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await setupService.claimUniversity(formData);
+      const payload = { ...formData, ...overrides };
+      await setupService.claimUniversity(payload);
       sessionStorage.removeItem('workspace_setup_draft');
       router.push('/dashboard');
     } catch (err: unknown) {

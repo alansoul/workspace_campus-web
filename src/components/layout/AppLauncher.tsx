@@ -9,6 +9,7 @@ import {
   MessageSquare,
   ShieldCheck,
   Home,
+  Settings,
 } from 'lucide-react';
 
 interface App {
@@ -25,17 +26,23 @@ const APPS: App[] = [
   { name: 'Freelance', href: '/freelance', icon: Briefcase, color: 'text-emerald-400' },
   { name: 'Chat', href: '/chat', icon: MessageSquare, color: 'text-purple-400' },
   { name: 'Admin', href: '/admin', icon: ShieldCheck, color: 'text-amber-400', adminOnly: true },
+  { name: 'Settings', href: '/settings', icon: Settings, color: 'text-cyan-400' }, // 👈 Direct link to /settings page
 ];
 
 export function AppLauncher({ userRole }: { userRole: string }) {
   const [open, setOpen] = useState(false);
-  const visibleApps = APPS.filter((a) => !a.adminOnly || userRole === 'ADMIN');
+
+  const allowedAdminRoles = ['ADMIN', 'CAMPUS_ADMIN', 'SUPER_ADMIN'];
+  const visibleApps = APPS.filter(
+    (a) => !a.adminOnly || allowedAdminRoles.includes(userRole),
+  );
 
   return (
     <div className="relative">
       <button
+        type="button"
         onClick={() => setOpen(!open)}
-        className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition"
+        className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition cursor-pointer"
         title="Campus Workspace Apps"
       >
         <Grid className="w-5 h-5" />
@@ -47,13 +54,13 @@ export function AppLauncher({ userRole }: { userRole: string }) {
             className="fixed inset-0 z-40"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 mt-3 w-72 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-2xl grid grid-cols-3 gap-2 z-50">
+          <div className="absolute right-0 mt-3 w-72 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-2xl grid grid-cols-3 gap-2 z-50 font-['Google_Sans',sans-serif]">
             {visibleApps.map((app) => (
               <Link
                 key={app.name}
                 href={app.href}
                 onClick={() => setOpen(false)}
-                className="flex flex-col items-center justify-center p-3 rounded-xl hover:bg-slate-800/60 transition text-center group"
+                className="flex flex-col items-center justify-center p-3 rounded-xl hover:bg-slate-800/60 transition text-center group cursor-pointer"
               >
                 <app.icon className={`w-6 h-6 mb-2 ${app.color} group-hover:scale-110 transition-transform`} />
                 <span className="text-[11px] font-medium text-slate-300 group-hover:text-white">
@@ -67,3 +74,5 @@ export function AppLauncher({ userRole }: { userRole: string }) {
     </div>
   );
 }
+
+export default AppLauncher;
