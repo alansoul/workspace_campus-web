@@ -1,3 +1,4 @@
+// campus-web/src/app/(workspace)/settings/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -21,7 +22,6 @@ export default function SettingsPage() {
   const router = useRouter();
   const [isUnlinking, setIsUnlinking] = useState(false);
 
-  // 🚨 FIX: Wrap route navigation in useEffect to avoid render-phase state updates
   useEffect(() => {
     if (!isLoading && !user) {
       router.replace('/login?redirect=/settings');
@@ -44,6 +44,10 @@ export default function SettingsPage() {
     user.role === 'CAMPUS_ADMIN' ||
     user.role === 'SUPER_ADMIN';
 
+  // Safe fallback to prevent TypeScript error if institutionalEmail is optional
+  const institutionalEmail = (user as { institutionalEmail?: string | null })
+    .institutionalEmail;
+
   const handleUnlink = async () => {
     const ok = window.confirm(
       'Unlink university email? You will lose Academics access until you link again.',
@@ -52,11 +56,12 @@ export default function SettingsPage() {
 
     setIsUnlinking(true);
     try {
-      const res = await apiFetch<{ accessToken?: string }>('/auth/campus/unlink', {
-        method: 'POST',
-      });
+      const res = await apiFetch<{ accessToken?: string; message?: string }>(
+        '/auth/campus/unlink',
+        { method: 'POST' },
+      );
 
-      // 🚨 CRITICAL FIX: Immediately update cookies on workspace-campus-web.vercel.app
+      // 1. Immediately downgrade cookies on workspace-campus-web.vercel.app
       const isSecure = window.location.protocol === 'https:';
       const flags = `path=/; max-age=604800; SameSite=Lax; ${isSecure ? 'Secure;' : ''}`;
 
@@ -66,13 +71,16 @@ export default function SettingsPage() {
       }
 
       toast.success('University email unlinked. Account is Individual again.');
+
+      // 2. Refresh session context
       await refreshSession();
-      router.refresh();
+
+      // 3. 🚨 HARD RELOAD: Instantly locks Academics and resets all workspace menus
+      window.location.reload();
     } catch (err: unknown) {
       toast.error(
         err instanceof Error ? err.message : 'Failed to unlink university email.',
       );
-    } finally {
       setIsUnlinking(false);
     }
   };
@@ -134,9 +142,9 @@ export default function SettingsPage() {
                 <ShieldCheck className="w-4 h-4 text-blue-600" />
                 {user.universityName || 'Verified campus'}
               </p>
-              {user.institutionalEmail && (
+              {institutionalEmail && (
                 <p className="text-xs font-mono text-slate-500">
-                  Linked: {user.institutionalEmail}
+                  Linked: {institutionalEmail}
                 </p>
               )}
               <button
@@ -155,7 +163,7 @@ export default function SettingsPage() {
                 No campus email linked. Link one to unlock Academics.
               </p>
               <Link
-                href="/dashboard?modal=link-campus"
+                href="/dashboard?modal=link-campus&from=settings"
                 className="inline-flex px-4 py-2.5 rounded-full bg-[#0B57D0] hover:bg-[#0842A0] text-white text-sm font-semibold transition"
               >
                 Link campus email

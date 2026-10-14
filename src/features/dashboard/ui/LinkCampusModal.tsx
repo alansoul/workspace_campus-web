@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { useAuthSession } from '@/features/auth/hooks/useAuthSession';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { ShieldCheck, X, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -15,7 +15,6 @@ interface LinkCampusModalProps {
 
 export function LinkCampusModal({ open, onClose }: LinkCampusModalProps) {
   const { refreshSession } = useAuthSession();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const fromRoute = searchParams.get('from') || 'dashboard';
 
@@ -88,19 +87,17 @@ export function LinkCampusModal({ open, onClose }: LinkCampusModalProps) {
       // 3. Close modal
       onClose();
 
-      // 4. Navigate directly to Academics if requested, or clean dashboard
-      if (fromRoute === 'academics') {
-        router.push('/academics');
-      } else {
-        router.replace('/dashboard');
-      }
+      // 4. 🚨 AUTOMATIC TRANSITION (Replaces manual F5):
+      // Wipes the cached ?modal= query param, attaches the new cookies,
+      // and transfers you directly into /academics seamlessly!
+      const targetUrl = fromRoute === 'academics' ? '/academics' : '/dashboard';
+      window.location.href = targetUrl;
     } catch (err: unknown) {
       toast.error(
         err instanceof Error
           ? err.message
           : 'Invalid or expired verification code.',
       );
-    } finally {
       setIsLoading(false);
     }
   };
