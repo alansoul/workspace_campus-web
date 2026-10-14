@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuthSession } from '../hooks/useAuthSession';
@@ -62,6 +62,29 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
   const { resolution, isResolving } = useDomainResolver(normalizedEmail);
   const { login, refreshSession } = useAuthSession();
 
+  // 🌐 PLACED HERE: Capture Google OAuth token from URL, set cookies, and redirect
+  useEffect(() => {
+    const oauthToken = searchParams.get('token');
+    const oauthRole = searchParams.get('role') || 'STUDENT';
+    const oauthAccountType = searchParams.get('accountType') || 'INDIVIDUAL';
+
+    if (oauthToken) {
+      const isSecure =
+        typeof window !== 'undefined' && window.location.protocol === 'https:';
+      const flags = `path=/; max-age=604800; SameSite=Lax; ${isSecure ? 'Secure;' : ''}`;
+
+      // Set first-party cookies directly on workspace-campus-web.vercel.app
+      document.cookie = `token=${encodeURIComponent(oauthToken)}; ${flags}`;
+      document.cookie = `user_role=${encodeURIComponent(oauthRole)}; ${flags}`;
+      document.cookie = `account_type=${encodeURIComponent(oauthAccountType)}; ${flags}`;
+
+      // Re-hydrate session and immediately forward to dashboard
+      refreshSession().then(() => {
+        router.replace(redirectUrl);
+      });
+    }
+  }, [searchParams, redirectUrl, refreshSession, router]);
+
   const isGmail = Boolean(resolution?.isGmail);
   const isUniversityEmail = Boolean(
     resolution?.isRegistered && resolution?.universityName,
@@ -88,6 +111,18 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
     setError(null);
     setMessage(null);
   };
+
+  // If redirecting from Google OAuth token, show subtle spinner to avoid form flicker
+  if (searchParams.get('token')) {
+    return (
+      <div className="min-h-screen bg-linear-to-tr from-indigo-100 via-purple-50 to-blue-100 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-3xl shadow-xl flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-3 border-[#0B57D0] border-t-transparent animate-spin" />
+          <p className="text-sm font-medium text-slate-700">Completing Google sign in...</p>
+        </div>
+      </div>
+    );
+  }
 
   // 1. Request OTP or password login
   const handleSubmitEmailOrPassword = async (e: React.FormEvent) => {
@@ -208,7 +243,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
         return;
       }
 
-      // Returning user (already has password) → full login via httpOnly cookie
+      // Returning user (already has password) → full login via cookie
       setUiCookies(res.user.role, res.user.universityName);
       await refreshSession();
       router.replace(redirectUrl);
