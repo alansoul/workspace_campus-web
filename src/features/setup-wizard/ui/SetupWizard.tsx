@@ -11,6 +11,7 @@ import { StepOrgDetails } from './StepOrgDetails';
 import { StepContact } from './StepContact';
 import { StepDomain } from './StepDomain';
 import { StepVerify } from './StepVerify';
+import { useAuthSession } from '@/features/auth/hooks/useAuthSession';
 
 const INITIAL_FORM: SetupFormData = {
   accountIntent: 'NEW_DOMAIN',
@@ -28,12 +29,13 @@ const INITIAL_FORM: SetupFormData = {
 
 export function SetupWizard() {
   const router = useRouter();
+  const { refreshSession } = useAuthSession();
   const [step, setStep] = useState<WizardStep>(1);
   const [formData, setFormData] = useState<SetupFormData>(INITIAL_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Restore draft from sessionStorage asynchronously to satisfy React 19 ESLint rule
+  // Restore draft from sessionStorage asynchronously
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem('workspace_setup_draft');
@@ -68,14 +70,19 @@ export function SetupWizard() {
       const payload = { ...formData, ...overrides };
       await setupService.claimUniversity(payload);
       sessionStorage.removeItem('workspace_setup_draft');
-      router.push('/dashboard');
+
+      // 1. Re-hydrate active session in React context
+      await refreshSession();
+
+      // 2. Next.js compliant client-side navigation (No window.location.href warning)
+      router.replace('/dashboard');
+      router.refresh();
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
         setError('Failed to provision university workspace. Please try again.');
       }
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -99,9 +106,9 @@ export function SetupWizard() {
         <span><strong>Get professional email and tools at 50% off.</strong> Limited-time offer</span>
       </div>
 
-      {/* Body: Left Step Content + Right Gemini AI Card */}
+      {/* Main Body */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-6 py-10 sm:py-16 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
-        {/* Left Column: Active Step */}
+        {/* Left Column: Active Step Form */}
         <div className="lg:col-span-6">
           {step === 1 && (
             <StepIntent
