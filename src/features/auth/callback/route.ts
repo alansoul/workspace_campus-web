@@ -1,4 +1,4 @@
-// campus-web/src/app/api/auth/session/route.ts
+// campus-web/src/app/auth/callback/route.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -9,39 +9,36 @@ export async function GET(request: NextRequest) {
   const accountType = searchParams.get('accountType') || 'INDIVIDUAL';
   const destination = searchParams.get('redirect') || '/dashboard';
 
-  // If token is missing, send back to login with error
   if (!token) {
     return NextResponse.redirect(
-      new URL('/login?error=oauth_token_missing', request.url)
+      new URL('/login?error=oauth_failed', request.url)
     );
   }
 
   const isProd = process.env.NODE_ENV === 'production';
   const response = NextResponse.redirect(new URL(destination, request.url));
 
-  // Set the FIRST-PARTY HttpOnly cookie directly on workspace-campus-web.vercel.app
-  response.cookies.set('token', token, {
-    httpOnly: true,
+  const cookieOptions = {
     secure: isProd,
-    sameSite: 'lax',
+    sameSite: 'lax' as const,
     maxAge: 7 * 24 * 60 * 60, // 7 days
     path: '/',
+  };
+
+  // Set first-party cookies directly on workspace-campus-web.vercel.app
+  response.cookies.set('token', token, {
+    ...cookieOptions,
+    httpOnly: true,
   });
 
   response.cookies.set('user_role', role, {
+    ...cookieOptions,
     httpOnly: false,
-    secure: isProd,
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60,
-    path: '/',
   });
 
   response.cookies.set('account_type', accountType, {
+    ...cookieOptions,
     httpOnly: false,
-    secure: isProd,
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60,
-    path: '/',
   });
 
   return response;
