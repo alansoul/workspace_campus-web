@@ -33,6 +33,7 @@ export function proxy(request: NextRequest) {
   const userRole = request.cookies.get('user_role')?.value;
   const { pathname, search } = request.nextUrl;
 
+  // 1. Verify token expiration
   const payload = parseJwtPayload(token);
   // An account is truly INSTITUTIONAL if universityId exists in the token or cookie is set
   const isInstitutional =
@@ -40,12 +41,18 @@ export function proxy(request: NextRequest) {
     cookieAccountType === 'INSTITUTIONAL';
 
   // 1. Authenticated users visiting login/register are redirected to dashboard
-  if ((pathname === '/login' || pathname === '/register') && token) {
-    const redirectParam = request.nextUrl.searchParams.get('redirect');
-    return NextResponse.redirect(
-      new URL(getSafeRedirectUrl(redirectParam), request.url),
-    );
+  // Inside campus-web/src/proxy.ts:
+if ((pathname === '/login' || pathname === '/register') && token) {
+  const redirectParam = request.nextUrl.searchParams.get('redirect');
+  const safeTarget = getSafeRedirectUrl(redirectParam);
+
+  // Prevent circular redirect loop back to the same showcase page
+  if (safeTarget === '/academics' || safeTarget === '/chat' || safeTarget === '/freelance') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
+
+  return NextResponse.redirect(new URL(safeTarget, request.url));
+}
 
   // 2. Private routes: ONLY /dashboard and /admin strictly require a token
   const isStrictlyPrivate =

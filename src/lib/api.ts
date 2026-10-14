@@ -30,7 +30,7 @@ function resolveUrl(path: string): string {
  * Enterprise Production API Client:
  * - ZERO localStorage dependency (immune to client-side token theft)
  * - Pure HttpOnly Cookie forwarding via credentials: 'include'
- * - Graceful handling of Render cold boots & gateway 502/504 errors
+ * - Graceful handling & auto-retry for Render cold boots & gateway 502 errors
  */
 export async function apiFetch<T = unknown>(
   path: string,
@@ -48,6 +48,19 @@ export async function apiFetch<T = unknown>(
         ...options.headers,
       },
     });
+
+    // ⚡ Auto-retry once after 2 seconds if Render is waking up (502 Bad Gateway)
+    if (res.status === 502) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      res = await fetch(url, {
+        credentials: 'include',
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+      });
+    }
   } catch {
     throw new ApiError(
       0,
@@ -60,11 +73,14 @@ export async function apiFetch<T = unknown>(
     const currentPath = window.location.pathname;
     const isPublic =
       currentPath === '/' ||
+      currentPath === '/academics' ||
+      currentPath === '/chat' ||
+      currentPath === '/freelance' ||
       currentPath.startsWith('/login') ||
       currentPath.startsWith('/register') ||
       currentPath.startsWith('/setup');
 
-    // Immediate browser redirect preserving return path
+    // Immediate browser redirect preserving return path (only on protected routes)
     if (!isPublic) {
       const loginUrl = new URL('/login', window.location.origin);
       loginUrl.searchParams.set('redirect', currentPath + window.location.search);
