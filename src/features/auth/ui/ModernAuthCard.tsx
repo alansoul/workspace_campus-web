@@ -132,7 +132,17 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
           throw new Error('Please enter your password.');
         }
 
-        await login({ email: normalizedEmail, password });
+        const res = (await login({
+          email: normalizedEmail,
+          password,
+        })) as unknown as {
+          user?: { role: string; universityName?: string | null };
+        } | null;
+
+        if (res?.user) {
+          setUiCookies(res.user.role, res.user.universityName);
+        }
+
         await refreshSession();
         router.replace(redirectUrl);
         router.refresh();
