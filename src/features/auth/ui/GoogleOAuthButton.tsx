@@ -1,4 +1,3 @@
-// campus-web/src/features/auth/ui/GoogleOAuthButton.tsx
 'use client';
 
 import React from 'react';
@@ -12,9 +11,10 @@ export function GoogleOAuthButton({
   disabled = false,
   label = 'Continue with Google',
 }: GoogleOAuthButtonProps) {
-  const apiUrl =
-    process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-  const googleAuthUrl = `${apiUrl}/auth/google`;
+  
+  // 🚨 CRITICAL FIX: Must be a relative path so it routes through Next.js rewrites!
+  // This ensures your browser treats the cookies as First-Party.
+  const googleAuthUrl = '/api/auth/google';
 
   return (
     <a
