@@ -18,12 +18,14 @@ import {
   Lock,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import { ForgotPasswordForm } from './ForgotPasswordForm';
+import { GoogleOAuthButton } from './GoogleOAuthButton';
 
 interface ModernAuthCardProps {
   initialMode?: 'signin' | 'signup';
 }
 
-type Step = 'input' | 'verify-otp' | 'set-password';
+type Step = 'input' | 'verify-otp' | 'set-password' | 'forgot-password';
 
 function sanitizeRedirect(target: string | null): string {
   if (!target) return '/dashboard';
@@ -132,10 +134,8 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
 
         await login({ email: normalizedEmail, password });
         await refreshSession();
-        // 🚨 Use window.location.href for a full cookie-refreshed page load
         router.replace(redirectUrl);
         router.refresh();
-
       }
     } catch (err: unknown) {
       const msg =
@@ -201,7 +201,6 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
       // Returning user (already has password) → full login via httpOnly cookie
       setUiCookies(res.user.role, res.user.universityName);
       await refreshSession();
-      // 🚨 Use window.location.href for a full cookie-refreshed page load
       router.replace(redirectUrl);
       router.refresh();
     } catch (err: unknown) {
@@ -252,7 +251,6 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
       }
 
       await refreshSession();
-      // 🚨 Use window.location.href for a full cookie-refreshed page load
       router.replace(redirectUrl);
       router.refresh();
     } catch (err: unknown) {
@@ -264,25 +262,53 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
     }
   };
 
+  // 4. Trigger Forgot Password OTP
+  const handleForgotPasswordTrigger = async () => {
+    resetMessages();
+    if (isInvalidDomain || !normalizedEmail) {
+      setError('Please enter your registered email address first.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await apiFetch('/auth/otp/request', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: normalizedEmail,
+          purpose: 'RESET_PASSWORD',
+        }),
+      });
+      setStep('forgot-password');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to send reset code.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const title =
     step === 'verify-otp'
       ? 'Verify your code'
       : step === 'set-password'
         ? 'Create your password'
-        : mode === 'signin'
-          ? 'Sign in to Northstar'
-          : 'Create your account';
+        : step === 'forgot-password'
+          ? 'Reset your password'
+          : mode === 'signin'
+            ? 'Sign in to Northstar'
+            : 'Create your account';
 
   const subtitle =
     step === 'verify-otp'
       ? `Enter the 6-digit code sent to ${normalizedEmail}`
       : step === 'set-password'
         ? 'Secure your account to finish signup'
-        : isUniversityEmail
-          ? `Authenticating via ${resolution?.universityName}`
-          : isGmail
-            ? 'Personal Google account'
-            : 'Enter your university or @gmail.com email to continue';
+        : step === 'forgot-password'
+          ? 'Verify your identity with OTP to set a new password'
+          : isUniversityEmail
+            ? `Authenticating via ${resolution?.universityName}`
+            : isGmail
+              ? 'Personal Google account'
+              : 'Enter your university or @gmail.com email to continue';
 
   return (
     <div className="min-h-screen bg-linear-to-tr from-indigo-100 via-purple-50 to-blue-100 flex items-center justify-center p-4 sm:p-6 font-['Google_Sans',sans-serif] select-none">
@@ -461,23 +487,31 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                 )}
 
                 {mode === 'signin' && (
-  <div className="flex items-center justify-between pt-0.5 text-xs">
-    <button
-      type="button"
-      onClick={() =>
-        setAuthMethod(authMethod === 'otp' ? 'password' : 'otp')
-      }
-      className="text-[#1A73E8] hover:underline font-medium cursor-pointer flex items-center gap-1"
-    >
-      <KeyRound className="w-3.5 h-3.5" />
-      <span>
-        {authMethod === 'otp'
-          ? 'Sign in with Password instead'
-          : 'Sign in with OTP code'}
-      </span>
-    </button>
-  </div>
-)}
+                  <div className="flex items-center justify-between pt-0.5 text-xs">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAuthMethod(authMethod === 'otp' ? 'password' : 'otp')
+                      }
+                      className="text-[#1A73E8] hover:underline font-medium cursor-pointer flex items-center gap-1"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      <span>
+                        {authMethod === 'otp'
+                          ? 'Sign in with Password instead'
+                          : 'Sign in with OTP code'}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleForgotPasswordTrigger}
+                      className="text-slate-500 hover:text-[#0B57D0] hover:underline font-medium cursor-pointer"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
 
                 <button
                   type="submit"
@@ -495,6 +529,16 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                     'Sign in'
                   )}
                 </button>
+
+                <div className="relative my-3 flex items-center justify-center">
+                  <div className="border-t border-slate-200 w-full" />
+                  <span className="bg-white px-3 text-[11px] text-slate-400 uppercase tracking-wider">
+                    or
+                  </span>
+                  <div className="border-t border-slate-200 w-full" />
+                </div>
+
+                <GoogleOAuthButton disabled={isLoading} />
               </form>
             )}
 
@@ -638,6 +682,21 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                   <span>Back to OTP</span>
                 </button>
               </form>
+            )}
+
+            {/* STEP 4: Forgot Password Reset (Modular Component) */}
+            {step === 'forgot-password' && (
+              <ForgotPasswordForm
+                email={normalizedEmail}
+                redirectUrl={redirectUrl}
+                onCancel={() => {
+                  resetMessages();
+                  setStep('input');
+                }}
+                onError={(msg) => setError(msg || null)}
+                onSuccessCookie={setUiCookies}
+                refreshSession={refreshSession}
+              />
             )}
           </div>
 
