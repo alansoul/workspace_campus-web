@@ -1,3 +1,4 @@
+// campus-web/src/features/dashboard/ui/LinkCampusModal.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -58,34 +59,48 @@ export function LinkCampusModal({ open, onClose }: LinkCampusModalProps) {
     setIsLoading(true);
 
     try {
-      await apiFetch('/auth/campus/link/verify', {
-        method: 'POST',
-        body: JSON.stringify({
-          institutionalEmail: institutionalEmail.trim().toLowerCase(),
-          otp: otp.trim(),
-        }),
-      });
+      // ✅ FIXED: Used 'institutionalEmail' (not undefined 'email')
+      const res = await apiFetch<{ accessToken?: string; message?: string }>(
+        '/auth/campus/link/verify',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            institutionalEmail: institutionalEmail.trim().toLowerCase(),
+            otp: otp.trim(),
+          }),
+        },
+      );
 
-      // 1. Toast Notification
+      // 1. Immediately upgrade browser cookies to INSTITUTIONAL
+      const isSecure = window.location.protocol === 'https:';
+      const flags = `path=/; max-age=604800; SameSite=Lax; ${isSecure ? 'Secure;' : ''}`;
+
+      document.cookie = `account_type=INSTITUTIONAL; ${flags}`;
+      if (res.accessToken) {
+        document.cookie = `token=${encodeURIComponent(res.accessToken)}; ${flags}`;
+      }
+
       toast.success('Campus email linked successfully! Access granted.');
 
-      // 2. Smooth Auto-Close
-      onClose();
-      setIsLoading(false);
-
-      // 3. Clear URL params so modal doesn't re-open on reload
-      const newUrl = window.location.pathname;
-      router.replace(fromRoute === 'academics' ? '/academics' : newUrl);
-
-      // 4. Refresh auth session & route
+      // 2. Refresh auth session context
       await refreshSession();
-      router.refresh();
+
+      // 3. Close modal
+      onClose();
+
+      // 4. Navigate directly to Academics if requested, or clean dashboard
+      if (fromRoute === 'academics') {
+        router.push('/academics');
+      } else {
+        router.replace('/dashboard');
+      }
     } catch (err: unknown) {
       toast.error(
         err instanceof Error
           ? err.message
           : 'Invalid or expired verification code.',
       );
+    } finally {
       setIsLoading(false);
     }
   };

@@ -1,9 +1,9 @@
+// campus-web/src/proxy.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 function getSafeRedirectUrl(target: string | null): string {
   if (!target) return '/dashboard';
-  // Relative paths only — block open redirects
   if (
     target.startsWith('/') &&
     !target.startsWith('//') &&
@@ -14,13 +14,32 @@ function getSafeRedirectUrl(target: string | null): string {
   return '/dashboard';
 }
 
+// Helper to inspect the real-time token payload at the edge
+function parseJwtPayload(token?: string): { universityId?: string; role?: string } | null {
+  if (!token) return null;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const json = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
 export function proxy(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
-  const accountType = request.cookies.get('account_type')?.value;
+  const cookieAccountType = request.cookies.get('account_type')?.value;
   const userRole = request.cookies.get('user_role')?.value;
   const { pathname, search } = request.nextUrl;
 
-  // 1. Authenticated users visiting auth routes are redirected to their dashboard
+  const payload = parseJwtPayload(token);
+  // An account is truly INSTITUTIONAL if universityId exists in the token or cookie is set
+  const isInstitutional =
+    Boolean(payload?.universityId && payload.universityId.trim() !== '') ||
+    cookieAccountType === 'INSTITUTIONAL';
+
+  // 1. Authenticated users visiting login/register are redirected to dashboard
   if ((pathname === '/login' || pathname === '/register') && token) {
     const redirectParam = request.nextUrl.searchParams.get('redirect');
     return NextResponse.redirect(
@@ -28,7 +47,7 @@ export function proxy(request: NextRequest) {
     );
   }
 
-  // 2. Private routes gate
+  // 2. Private routes: ONLY /dashboard and /admin strictly require a token
   const isStrictlyPrivate =
     pathname.startsWith('/dashboard') || pathname.startsWith('/admin');
 
@@ -38,21 +57,23 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // 3. 🔒 STRICT ACADEMICS GATE: Personal accounts (INDIVIDUAL) cannot access /academics OR /academics/*
-  if (
-    token &&
-    accountType === 'INDIVIDUAL' &&
-    (pathname === '/academics' || pathname.startsWith('/academics/'))
-  ) {
+  // 3. 🔒 STRICT ACADEMICS GATE:
+  // Personal accounts (INDIVIDUAL) CANNOT enter /academics.
+  // They are redirected to the dashboard with the link-campus modal prompt!
+  const isAcademicsRoute =
+    pathname === '/academics' || pathname.startsWith('/academics/');
+
+  if (token && isAcademicsRoute && !isInstitutional) {
     return NextResponse.redirect(
       new URL('/dashboard?modal=link-campus&from=academics', request.url),
     );
   }
 
-  // 4. Admin role gate
+  // 4. Admin role gate: Only ADMIN / CAMPUS_ADMIN / SUPER_ADMIN can enter /admin
   if (pathname.startsWith('/admin') && token) {
     const allowedRoles = ['ADMIN', 'CAMPUS_ADMIN', 'SUPER_ADMIN'];
-    if (!userRole || !allowedRoles.includes(userRole)) {
+    const effectiveRole = payload?.role || userRole;
+    if (!effectiveRole || !allowedRoles.includes(effectiveRole)) {
       return NextResponse.redirect(
         new URL('/dashboard?error=unauthorized', request.url),
       );

@@ -52,7 +52,19 @@ export default function SettingsPage() {
 
     setIsUnlinking(true);
     try {
-      await apiFetch('/auth/campus/unlink', { method: 'POST' });
+      const res = await apiFetch<{ accessToken?: string }>('/auth/campus/unlink', {
+        method: 'POST',
+      });
+
+      // 🚨 CRITICAL FIX: Immediately update cookies on workspace-campus-web.vercel.app
+      const isSecure = window.location.protocol === 'https:';
+      const flags = `path=/; max-age=604800; SameSite=Lax; ${isSecure ? 'Secure;' : ''}`;
+
+      document.cookie = `account_type=INDIVIDUAL; ${flags}`;
+      if (res?.accessToken) {
+        document.cookie = `token=${encodeURIComponent(res.accessToken)}; ${flags}`;
+      }
+
       toast.success('University email unlinked. Account is Individual again.');
       await refreshSession();
       router.refresh();
