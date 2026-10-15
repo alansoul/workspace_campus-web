@@ -24,7 +24,7 @@ export default function AcademicsPage() {
 
   if (isLoading) return null;
 
-  // 1. Logged out -> Show marketing landing page
+  // 1. Logged out -> Show marketing showcase landing page
   if (!isAuthenticated) {
     return (
       <ProductLandingPage
@@ -51,53 +51,11 @@ export default function AcademicsPage() {
           { id: 'features', label: 'Features' },
           { id: 'faq', label: 'FAQ' },
         ]}
-      >
-        <section
-          id="use-cases"
-          className="min-h-[50vh] flex items-center justify-center bg-[#F8F9FA] border-t border-[#E8EAED]"
-        >
-          <div className="text-center">
-            <h2 className="text-3xl text-[#1F1F1F] font-semibold mb-2">
-              Academics Use Cases
-            </h2>
-            <p className="text-[#5F6368]">
-              Content specifically designed for students and professors.
-            </p>
-          </div>
-        </section>
-
-        <section
-          id="features"
-          className="min-h-[50vh] flex items-center justify-center bg-white border-t border-[#E8EAED]"
-        >
-          <div className="text-center">
-            <h2 className="text-3xl text-[#1F1F1F] font-semibold mb-2">
-              Drive & Notes Features
-            </h2>
-            <p className="text-[#5F6368]">
-              Details about PDF uploads and Gemini AI integration.
-            </p>
-          </div>
-        </section>
-
-        <section
-          id="faq"
-          className="min-h-[50vh] flex items-center justify-center bg-[#F8F9FA] border-t border-[#E8EAED]"
-        >
-          <div className="text-center">
-            <h2 className="text-3xl text-[#1F1F1F] font-semibold mb-2">
-              Academics FAQ
-            </h2>
-            <p className="text-[#5F6368]">
-              Common questions about university domain limits.
-            </p>
-          </div>
-        </section>
-      </ProductLandingPage>
+      />
     );
   }
 
-  // 2. Logged in as Personal Account (INDIVIDUAL / Unlinked Gmail) -> Lock access
+  // 2. Logged in as Personal Account (INDIVIDUAL / Unlinked Gmail) -> Access Lock Screen
   if (!isInstitutional) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-8 text-center bg-slate-900 text-white font-['Google_Sans',sans-serif]">
@@ -123,6 +81,6 @@ export default function AcademicsPage() {
     );
   }
 
-  // 3. Logged in with Verified Institutional Email / Linked Campus -> Render App
+  // 3. Logged in with Verified Institutional Email / Linked Campus -> Render Full Student Portal
   return <AcademicsApp />;
 }
