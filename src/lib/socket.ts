@@ -3,8 +3,14 @@ import { io, Socket } from 'socket.io-client';
 const rawUrl =
   process.env.NEXT_PUBLIC_API_URL || 'https://workspace-campus-api.onrender.com';
 
-// Extract the origin to avoid Socket.io treating paths (like /api) as namespaces
-function cleanSocketUrl(url: string): string {
+function getSocketUrl(url: string): string {
+  if (typeof window !== 'undefined') {
+    // If relative path like '/api' or empty, use current window origin
+    if (!url || url.startsWith('/')) {
+      return window.location.origin;
+    }
+  }
+
   try {
     const parsed = new URL(url);
     return parsed.origin;
@@ -13,7 +19,7 @@ function cleanSocketUrl(url: string): string {
   }
 }
 
-const SOCKET_URL = cleanSocketUrl(rawUrl);
+const SOCKET_URL = getSocketUrl(rawUrl);
 
 let socket: Socket | null = null;
 
@@ -23,7 +29,7 @@ export const getSocket = (): Socket => {
       withCredentials: true,
       transports: ['websocket', 'polling'],
       autoConnect: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 15,
       reconnectionDelay: 1500,
     });
 

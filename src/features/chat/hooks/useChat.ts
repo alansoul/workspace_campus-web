@@ -7,6 +7,14 @@ import { Channel, ChatMessage } from '../types/chat.types';
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || 'https://workspace-campus-api.onrender.com';
 
+// Helper to construct absolute URL if API_URL is relative or proxy-based
+const getApiEndpoint = (endpoint: string) => {
+  if (typeof window !== 'undefined' && API_URL.startsWith('/')) {
+    return `${window.location.origin}${API_URL}${endpoint}`;
+  }
+  return `${API_URL}${endpoint}`;
+};
+
 export interface OnlineMember {
   userId: string;
   name: string;
@@ -81,8 +89,8 @@ export function useChat(activeUser?: { id?: string; fullName?: string; email?: s
       try {
         const userId = activeUser?.id;
         const [channelsRes, directRes] = await Promise.all([
-          fetch(`${API_URL}/chat/channels${userId ? `?userId=${userId}` : ''}`, { credentials: 'include' }),
-          userId ? fetch(`${API_URL}/chat/direct?userId=${userId}`, { credentials: 'include' }) : Promise.resolve(null),
+          fetch(getApiEndpoint(`/chat/channels${userId ? `?userId=${userId}` : ''}`), { credentials: 'include' }),
+          userId ? fetch(getApiEndpoint(`/chat/direct?userId=${userId}`), { credentials: 'include' }) : Promise.resolve(null),
         ]);
 
         if (channelsRes.ok && isMounted) {
@@ -123,7 +131,7 @@ export function useChat(activeUser?: { id?: string; fullName?: string; email?: s
     const channelId = currentChannel.id;
     let isMounted = true;
 
-    fetch(`${API_URL}/chat/channels/${channelId}/messages?limit=50`, { credentials: 'include' })
+    fetch(getApiEndpoint(`/chat/channels/${channelId}/messages?limit=50`), { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : []))
       .then((data: ChatMessage[]) => {
         if (isMounted) {
@@ -157,7 +165,7 @@ export function useChat(activeUser?: { id?: string; fullName?: string; email?: s
     const formData = new FormData();
     formData.append('file', file);
 
-    const res = await fetch(`${API_URL}/chat/upload`, {
+    const res = await fetch(getApiEndpoint('/chat/upload'), {
       method: 'POST',
       body: formData,
       credentials: 'include',
@@ -199,7 +207,7 @@ export function useChat(activeUser?: { id?: string; fullName?: string; email?: s
   const addFriendByEmail = async (friendEmail: string) => {
     if (!activeUser?.id) return { success: false, error: 'User not logged in' };
     try {
-      const res = await fetch(`${API_URL}/chat/direct`, {
+      const res = await fetch(getApiEndpoint('/chat/direct'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -229,7 +237,7 @@ export function useChat(activeUser?: { id?: string; fullName?: string; email?: s
 
   const createGroup = async (name: string, description?: string) => {
     try {
-      const res = await fetch(`${API_URL}/chat/channels`, {
+      const res = await fetch(getApiEndpoint('/chat/channels'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
