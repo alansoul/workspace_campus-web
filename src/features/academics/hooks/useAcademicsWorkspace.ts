@@ -347,7 +347,9 @@ export function useAcademicsWorkspace() {
             category: 'Club',
             timingBadge: 'From Inbox',
             description: u.summary,
-            dateTimeStr: u.extractedData?.dateStr || 'Upcoming',
+            dateTimeStr:
+              (u.extractedData as { dateStr?: string } | undefined)?.dateStr ||
+              'Upcoming',
             venue: u.extractedData?.venue || 'Campus',
             isInterested: false,
           }));

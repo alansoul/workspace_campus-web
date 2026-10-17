@@ -38,11 +38,16 @@ export function AcademicsHeader({
     setSyncToast('Connecting to campus inbox via MCP agent...');
 
     try {
-      const res = await academicsService.syncUniversityEmail();
-      if (res.extracted && res.extracted.length > 0) {
-        setSyncToast(`✓ Synced ${res.extracted.length} new items from ${profile.email}!`);
+      const res = (await academicsService.runFullInboxScan()) as unknown as {
+        updates?: SyncedCampusEmailItem[];
+        extracted?: SyncedCampusEmailItem[];
+      };
+      const items = res?.updates ?? res?.extracted ?? [];
+
+      if (items.length > 0) {
+        setSyncToast(`✓ Synced ${items.length} new items from ${profile.email}!`);
         if (onSyncCompleted) {
-          onSyncCompleted(res.extracted);
+          onSyncCompleted(items);
         }
       } else {
         setSyncToast('✓ Inbox up to date! No new notices.');
