@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { McpConnector } from '../../types/academics.types';
 import { Icons } from '../AcademicsIcons';
+import { academicsService } from '../../services/academics.service';
 
 interface McpPluginsViewProps {
   connectors: McpConnector[];
@@ -17,14 +18,73 @@ export function McpPluginsView({
 }: McpPluginsViewProps) {
   const [selectedConnector, setSelectedConnector] = useState<McpConnector | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('All');
+  const [connectingId, setConnectingId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>('');
+
+  // Safe external redirect state (satisfies react-hooks/immutability)
+  const [oauthRedirectUrl, setOauthRedirectUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (oauthRedirectUrl) {
+      window.location.assign(oauthRedirectUrl);
+    }
+  }, [oauthRedirectUrl]);
 
   const connectedList = connectors.filter((c) => c.isConnected);
   const filteredList = connectors.filter(
-    (c) => filterCategory === 'All' || c.category === filterCategory
+    (c) => filterCategory === 'All' || c.category === filterCategory,
   );
+
+  // Handles real Google OAuth redirect or mock toggle
+  const handleConnect = async (connectorId: string, isCurrentlyConnected: boolean) => {
+    setErrorMessage('');
+
+    // If already connected, disconnect it
+    if (isCurrentlyConnected) {
+      onToggleConnector(connectorId);
+      return;
+    }
+
+    // Real OAuth flow for Gmail
+    if (connectorId === 'gmail') {
+      setConnectingId('gmail');
+      try {
+        const res = await academicsService.getGmailConnectUrl();
+        if (res?.url) {
+          // Triggers navigation via useEffect to satisfy React Compiler
+          setOauthRedirectUrl(res.url);
+          return;
+        }
+        setErrorMessage('Failed to obtain Google OAuth URL. Ensure campus-api is running.');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Backend connection error';
+        setErrorMessage(`OAuth Redirect Error: ${msg}. Check GOOGLE_GMAIL_CLIENT_ID in campus-api/.env.`);
+      } finally {
+        setConnectingId(null);
+      }
+      return;
+    }
+
+    // Toggle other connectors
+    onToggleConnector(connectorId);
+  };
 
   return (
     <div className="space-y-8">
+      {/* Error Alert Banner */}
+      {errorMessage && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between animate-in fade-in">
+          <span>⚠️ {errorMessage}</span>
+          <button
+            type="button"
+            onClick={() => setErrorMessage('')}
+            className="text-rose-500 hover:text-rose-800 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -79,7 +139,7 @@ export function McpPluginsView({
             key={cat}
             type="button"
             onClick={() => setFilterCategory(cat)}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition ${
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
               filterCategory === cat
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
@@ -128,21 +188,26 @@ export function McpPluginsView({
               </button>
               <button
                 type="button"
-                onClick={() => onToggleConnector(item.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                onClick={() => handleConnect(item.id, item.isConnected)}
+                disabled={connectingId === item.id}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer disabled:opacity-50 ${
                   item.isConnected
                     ? 'bg-rose-50 hover:bg-rose-100 text-rose-600'
                     : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
                 }`}
               >
-                {item.isConnected ? 'Disconnect' : '+ Connect'}
+                {connectingId === item.id
+                  ? 'Redirecting...'
+                  : item.isConnected
+                    ? 'Disconnect'
+                    : '+ Connect'}
               </button>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Detailed Inspector Modal (ChatGPT style from Screenshot 5/6) */}
+      {/* Detailed Inspector Modal */}
       {selectedConnector && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
           <div className="bg-white w-full max-w-xl rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-150 space-y-6 max-h-[90vh] overflow-y-auto">
@@ -188,7 +253,7 @@ export function McpPluginsView({
               </div>
             </div>
 
-            {/* Sample AI Prompts (Click to ask AI) */}
+            {/* Sample AI Prompts */}
             <div>
               <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                 Sample AI Prompts (Click to Run)
@@ -220,14 +285,19 @@ export function McpPluginsView({
               </span>
               <button
                 type="button"
-                onClick={() => onToggleConnector(selectedConnector.id)}
-                className={`px-5 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                onClick={() => handleConnect(selectedConnector.id, selectedConnector.isConnected)}
+                disabled={connectingId === selectedConnector.id}
+                className={`px-5 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer disabled:opacity-50 ${
                   selectedConnector.isConnected
                     ? 'bg-rose-50 hover:bg-rose-100 text-rose-600'
                     : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
                 }`}
               >
-                {selectedConnector.isConnected ? 'Disconnect' : 'Connect Account'}
+                {connectingId === selectedConnector.id
+                  ? 'Redirecting to Google...'
+                  : selectedConnector.isConnected
+                    ? 'Disconnect'
+                    : 'Connect Account'}
               </button>
             </div>
           </div>

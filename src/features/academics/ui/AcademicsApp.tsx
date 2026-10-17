@@ -111,6 +111,10 @@ export function AcademicsApp() {
         isOpen={isAiDrawerOpen}
         onToggle={() => setIsAiDrawerOpen(!isAiDrawerOpen)}
         profile={profile}
+        timetable={timetable}          // <-- Passes live timetable
+  assignments={assignments}      // <-- Passes live coursework
+  notices={notices}              // <-- Passes live notices
+  activeTab={activeTab}          // <-- Passes active screen tab
         initialPrompt={activeAiPrompt}
         onClearInitialPrompt={() => setActiveAiPrompt('')}
       />

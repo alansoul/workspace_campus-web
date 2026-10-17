@@ -12,10 +12,30 @@ export interface SyncedCampusEmailItem {
   venue?: string;
 }
 
-export interface SyncUniversityEmailResponse {
-  success: boolean;
-  message: string;
-  extracted: SyncedCampusEmailItem[];
+export interface ScannedInboxUpdate {
+  id: string;
+  sourceEmailId: string;
+  sender: string;
+  subject: string;
+  isUnread: boolean;
+  receivedAt: string;
+  actionType: 'NOTICE' | 'TIMETABLE_UPDATE' | 'EVENT' | 'TASK';
+  title: string;
+  summary: string;
+  urgency: 'HIGH' | 'MEDIUM' | 'LOW';
+  extractedData?: {
+    venue?: string;
+    room?: string;
+    subjectName?: string;
+    rescheduledTime?: string;
+    dueDate?: string;
+  };
+}
+
+export interface FullInboxScanResponse {
+  scannedCount: number;
+  unreadCount: number;
+  updates: ScannedInboxUpdate[];
 }
 
 export const academicsService = {
@@ -75,15 +95,35 @@ export const academicsService = {
   },
 
   /**
-   * Triggers the University Email MCP Agent sync
+   * Gets Google OAuth consent screen URL
    */
-  async syncUniversityEmail(): Promise<SyncUniversityEmailResponse> {
-    return apiFetch<SyncUniversityEmailResponse>(
-      '/universities/email-sync/run',
-      {
-        method: 'POST',
-        body: JSON.stringify({}),
-      },
-    );
+  async getGmailConnectUrl(): Promise<{ url: string }> {
+    return apiFetch<{ url: string }>('/universities/auth/google-gmail/connect-url', {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Checks if current user has an active Gmail token stored in database
+   */
+  async getGmailStatus(): Promise<{ connected: boolean; email?: string; connectedAt?: string }> {
+    try {
+      return await apiFetch<{ connected: boolean; email?: string; connectedAt?: string }>(
+        '/universities/auth/google-gmail/status',
+        { method: 'GET' },
+      );
+    } catch {
+      return { connected: false };
+    }
+  },
+
+  /**
+   * Triggers deep inbox scan, full Base64 decoding, and Gemini AI multi-entity extraction
+   */
+  async runFullInboxScan(): Promise<FullInboxScanResponse> {
+    return apiFetch<FullInboxScanResponse>('/universities/email-sync/full-scan', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
   },
 };

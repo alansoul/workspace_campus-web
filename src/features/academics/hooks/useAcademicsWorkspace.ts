@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthSession } from '@/features/auth/hooks/useAuthSession';
 import { getFormattedToday, getLiveGreeting, getDayName } from '../utils/academics-date.utils';
 import type {
@@ -15,6 +15,7 @@ import type {
   DayTimetable,
   SubjectItem,
   McpConnector,
+  CampusNotice,
 } from '../types/academics.types';
 import {
   INITIAL_STUDENT_PROFILE,
@@ -31,6 +32,7 @@ import {
   CAMPUS_TIMETABLES_REGISTRY,
   INITIAL_MCP_CONNECTORS,
 } from '../data/academics.data';
+import { academicsService } from '../services/academics.service';
 
 export type BranchCode = 'CSE' | 'ECE' | 'DSAI' | 'MECH';
 
@@ -94,7 +96,7 @@ export function useAcademicsWorkspace() {
         } catch {}
       }
     }
-    const resolvedName = user?.name || (isAdmin ? 'Alan Soul' : 'Aarav Mehta');
+    const resolvedName = user?.name || (isAdmin ? 'Alan Soul' : 'Rohan Singh Bhandari');
     return {
       ...INITIAL_STUDENT_PROFILE,
       name: resolvedName,
@@ -104,7 +106,7 @@ export function useAcademicsWorkspace() {
         .join('')
         .slice(0, 2)
         .toUpperCase(),
-      email: user?.email || (isAdmin ? 'alansoul1796@gmail.com' : 'aarav.mehta@iiitnr.edu.in'),
+      email: user?.email || (isAdmin ? 'alansoul1796@gmail.com' : 'rohan26100@iiitnr.edu.in'),
       collegeName: institutionName,
       semester: selectedSemester,
       branch: `B.Tech · ${selectedBranch}`,
@@ -165,7 +167,7 @@ export function useAcademicsWorkspace() {
     reader.readAsDataURL(file);
   };
 
-  // 6. MCP Connectors State (Actively uses INITIAL_MCP_CONNECTORS and McpConnector)
+  // 6. MCP Connectors State
   const [connectors, setConnectors] = useState<McpConnector[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('mcp_connectors_data');
@@ -178,13 +180,44 @@ export function useAcademicsWorkspace() {
     return INITIAL_MCP_CONNECTORS;
   });
 
+  // Auto-verify Gmail Connection from Database / OAuth Redirect
+  useEffect(() => {
+    async function checkGmailStatus() {
+      const isRedirected =
+        typeof window !== 'undefined' &&
+        window.location.search.includes('gmail_connected');
+
+      const status = await academicsService.getGmailStatus();
+
+      if (status.connected || isRedirected) {
+        setConnectors((prev) => {
+          const updated = prev.map((c) =>
+            c.id === 'gmail'
+              ? {
+                  ...c,
+                  isConnected: true,
+                  connectedAccount: status.email || 'rohan26100@iiitnr.edu.in',
+                }
+              : c,
+          );
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('mcp_connectors_data', JSON.stringify(updated));
+          }
+          return updated;
+        });
+      }
+    }
+
+    checkGmailStatus();
+  }, []);
+
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
   const [activeAiPrompt, setActiveAiPrompt] = useState('');
 
   const toggleConnector = (connectorId: string) => {
     setConnectors((prev) => {
       const updated = prev.map((c) =>
-        c.id === connectorId ? { ...c, isConnected: !c.isConnected } : c
+        c.id === connectorId ? { ...c, isConnected: !c.isConnected } : c,
       );
       if (typeof window !== 'undefined') {
         localStorage.setItem('mcp_connectors_data', JSON.stringify(updated));
@@ -228,7 +261,7 @@ export function useAcademicsWorkspace() {
   const [assignmentFilter, setAssignmentFilter] = useState<AssignmentStatus>('All');
   const [practicals, setPracticals] = useState<PracticalExperiment[]>(INITIAL_PRACTICALS);
   const [selectedEventCategory, setSelectedEventCategory] = useState<EventCategory>('All');
-  const [notices, setNotices] = useState(INITIAL_NOTICES);
+  const [notices, setNotices] = useState<CampusNotice[]>(INITIAL_NOTICES);
 
   // Modals Visibility
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -257,7 +290,87 @@ export function useAcademicsWorkspace() {
     setCustomTimetable(data);
   };
 
-  // Handlers
+  // Live Deep Sync Handler: Ingests Real Decoded Emails & Updates Full UI
+  const handleFullInboxSync = async (): Promise<{
+    success: boolean;
+    scanned: number;
+    unread: number;
+    itemsCount: number;
+  }> => {
+    try {
+      const res = await academicsService.runFullInboxScan();
+
+      if (res.updates && res.updates.length > 0) {
+        // 1. Ingest Notices
+        const newNotices: CampusNotice[] = res.updates
+          .filter((u) => u.actionType === 'NOTICE' || u.actionType === 'TIMETABLE_UPDATE')
+          .map((u) => ({
+            id: u.id,
+            title: u.title,
+            category: 'Academic',
+            dateStr:
+              new Date(u.receivedAt).toLocaleDateString([], {
+                month: 'short',
+                day: 'numeric',
+              }) + ' · From Inbox',
+            summary: u.summary,
+            isImportant: u.urgency === 'HIGH',
+            isUnread: u.isUnread,
+          }));
+
+        if (newNotices.length > 0) {
+          setNotices((prev) => [...newNotices, ...prev]);
+        }
+
+        // 2. Ingest Tasks
+        const newTasks: AcademicTask[] = res.updates
+          .filter((u) => u.actionType === 'TASK')
+          .map((u) => ({
+            id: u.id,
+            title: u.title,
+            category: 'Assignment',
+            priority: u.urgency === 'HIGH' ? 'High' : 'Medium',
+            dueDateText: u.extractedData?.dueDate || 'Due soon',
+            completed: false,
+          }));
+
+        if (newTasks.length > 0) {
+          setTasks((prev) => [...newTasks, ...prev]);
+        }
+
+        // 3. Ingest Events
+        const newEvents: CampusEvent[] = res.updates
+          .filter((u) => u.actionType === 'EVENT')
+          .map((u) => ({
+            id: u.id,
+            title: u.title,
+            category: 'Club',
+            timingBadge: 'From Inbox',
+            description: u.summary,
+            dateTimeStr: u.extractedData?.dateStr || 'Upcoming',
+            venue: u.extractedData?.venue || 'Campus',
+            isInterested: false,
+          }));
+
+        if (newEvents.length > 0) {
+          setEvents((prev) => [...newEvents, ...prev]);
+        }
+
+        return {
+          success: true,
+          scanned: res.scannedCount,
+          unread: res.unreadCount,
+          itemsCount: res.updates.length,
+        };
+      }
+
+      return { success: true, scanned: 0, unread: 0, itemsCount: 0 };
+    } catch {
+      return { success: false, scanned: 0, unread: 0, itemsCount: 0 };
+    }
+  };
+
+  // Creation Handlers
   const handleCreateEvent = (newEvent: {
     title: string;
     category: EventCategory;
@@ -303,26 +416,26 @@ export function useAcademicsWorkspace() {
 
   const updateAssignmentStatus = (
     assignmentId: string,
-    newStatus: Exclude<AssignmentStatus, 'All'>
+    newStatus: Exclude<AssignmentStatus, 'All'>,
   ) => {
     setAssignments((prev) =>
       prev.map((asg) =>
-        asg.id === assignmentId ? { ...asg, status: newStatus } : asg
-      )
+        asg.id === assignmentId ? { ...asg, status: newStatus } : asg,
+      ),
     );
   };
 
   const toggleEventInterest = (eventId: string) => {
     setEvents((prev) =>
       prev.map((evt) =>
-        evt.id === eventId ? { ...evt, isInterested: !evt.isInterested } : evt
-      )
+        evt.id === eventId ? { ...evt, isInterested: !evt.isInterested } : evt,
+      ),
     );
   };
 
   const toggleTaskCompletion = (taskId: string) => {
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t))
+      prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)),
     );
   };
 
@@ -347,19 +460,19 @@ export function useAcademicsWorkspace() {
 
   const toggleStarFile = (fileId: string) => {
     setDriveFiles((prev) =>
-      prev.map((f) => (f.id === fileId ? { ...f, isStarred: !f.isStarred } : f))
+      prev.map((f) => (f.id === fileId ? { ...f, isStarred: !f.isStarred } : f)),
     );
   };
 
   const markPracticalComplete = (id: string) => {
     setPracticals((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, completed: !p.completed } : p))
+      prev.map((p) => (p.id === id ? { ...p, completed: !p.completed } : p)),
     );
   };
 
   const markNoticeAsRead = (noticeId: string) => {
     setNotices((prev) =>
-      prev.map((n) => (n.id === noticeId ? { ...n, isUnread: false } : n))
+      prev.map((n) => (n.id === noticeId ? { ...n, isUnread: false } : n)),
     );
   };
 
@@ -382,6 +495,9 @@ export function useAcademicsWorkspace() {
     activeAiPrompt,
     setActiveAiPrompt,
     openAiDrawerWithPrompt,
+
+    // Live Deep Email Sync
+    handleFullInboxSync,
 
     todayFormatted: getFormattedToday(),
     greeting: getLiveGreeting(),
@@ -410,7 +526,7 @@ export function useAcademicsWorkspace() {
       (evt) =>
         (selectedEventCategory === 'All' || evt.category === selectedEventCategory) &&
         (evt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          evt.description.toLowerCase().includes(searchQuery.toLowerCase()))
+          evt.description.toLowerCase().includes(searchQuery.toLowerCase())),
     ),
     selectedEventCategory,
     setSelectedEventCategory,
@@ -428,7 +544,7 @@ export function useAcademicsWorkspace() {
 
     // Coursework
     assignments: assignments.filter(
-      (a) => assignmentFilter === 'All' || a.status === assignmentFilter
+      (a) => assignmentFilter === 'All' || a.status === assignmentFilter,
     ),
     assignmentFilter,
     setAssignmentFilter,

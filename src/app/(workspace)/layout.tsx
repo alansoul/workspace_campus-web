@@ -77,7 +77,7 @@ export default function SuiteLayout({ children }: { children: React.ReactNode })
             <div className="w-8 h-8 rounded-xl bg-linear-to-tr from-cyan-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-xs group-hover:scale-105 transition-transform">
               ✦
             </div>
-            <span className="font-semibold text-sm tracking-tight text-white group-hover:text-cyan-300 transition-colors truncate max-w-[200px] sm:max-w-xs">
+            <span className="font-semibold text-sm tracking-tight text-white group-hover:text-cyan-300 transition-colors truncate max-w-50 sm:max-w-xs">
               {universityTitle}
             </span>
           </Link>

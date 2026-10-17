@@ -36,17 +36,23 @@ export default function ChatPage() {
         { id: 'moderation', label: 'Admin Moderation' },
       ]}
     >
-      <section id="channels" className="min-h-[50vh] flex items-center justify-center bg-[#F8F9FA] border-t border-[#E8EAED]">
+      <section
+        id="channels"
+        className="min-h-[50vh] flex items-center justify-center bg-[#F8F9FA] border-t border-[#E8EAED]"
+      >
         <div className="text-center">
           <h2 className="text-3xl text-[#1F1F1F] font-semibold mb-2">WebSocket Channels</h2>
-          <p className="text-[#5F6368]">Showcase Discord-style UI here.</p>
+          <p className="text-[#5F6368]">Live collaborative chat ready on sign in.</p>
         </div>
       </section>
-      
-      <section id="moderation" className="min-h-[50vh] flex items-center justify-center bg-white border-t border-[#E8EAED]">
+
+      <section
+        id="moderation"
+        className="min-h-[50vh] flex items-center justify-center bg-white border-t border-[#E8EAED]"
+      >
         <div className="text-center">
           <h2 className="text-3xl text-[#1F1F1F] font-semibold mb-2">Automated Moderation</h2>
-          <p className="text-[#5F6368]">Explain how toxic messages are blocked.</p>
+          <p className="text-[#5F6368]">Campus-scoped policy and room access control.</p>
         </div>
       </section>
     </ProductLandingPage>

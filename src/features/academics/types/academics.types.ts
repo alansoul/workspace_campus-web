@@ -224,3 +224,21 @@ export interface LostItem {
   timeAgo: string;
   status: 'Found' | 'Lost';
 }
+
+// Add to src/features/academics/types/academics.types.ts:
+
+export type GeminiModelId =
+  | '3.5-flash-lite'
+  | '3.8-flash'
+  | '3.1-pro'
+  | '4-argon';
+
+export type GeminiThinkingLevel = 'low' | 'medium' | 'high';
+
+export interface GeminiModelConfig {
+  id: GeminiModelId;
+  name: string;
+  badge: string;
+  description: string;
+  apiModel: string;
+}

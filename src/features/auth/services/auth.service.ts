@@ -1,4 +1,4 @@
-// src/features/auth/services/auth.service.ts
+// campus-web/src/features/auth/services/auth.service.ts
 import { apiClient, apiFetch } from '@/lib/api';
 import { AuthResponse, DomainResolution, LoginPayload } from '../types/auth.types';
 
@@ -6,10 +6,16 @@ import { AuthResponse, DomainResolution, LoginPayload } from '../types/auth.type
 const request = apiClient || apiFetch;
 
 export const authService = {
-  // Resolve university domain
+  // Resolve university domain (passes both full email and extracted domain)
   async resolveDomain(email: string): Promise<DomainResolution> {
-    const domain = email.split('@')[1] || '';
-    return request<DomainResolution>(`/auth/resolve-domain?domain=${encodeURIComponent(domain)}`);
+    const cleanEmail = email.trim().toLowerCase();
+    const domain = cleanEmail.includes('@')
+      ? cleanEmail.split('@')[1] || ''
+      : cleanEmail;
+
+    return request<DomainResolution>(
+      `/auth/resolve-domain?email=${encodeURIComponent(cleanEmail)}&domain=${encodeURIComponent(domain)}`,
+    );
   },
 
   // Login
