@@ -1,25 +1,32 @@
+// campus-web/src/lib/socket.ts
 import { io, Socket } from 'socket.io-client';
 
-const rawUrl =
-  process.env.NEXT_PUBLIC_API_URL || 'https://workspace-campus-api.onrender.com';
+function getSocketUrl(): string {
+  // 1. Prioritize the dedicated WebSocket Render URL from Vercel env
+  const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+  if (wsUrl && wsUrl.startsWith('http')) {
+    return wsUrl.replace(/\/+$/, '');
+  }
 
-function getSocketUrl(url: string): string {
-  if (typeof window !== 'undefined') {
-    // If relative path like '/api' or empty, use current window origin
-    if (!url || url.startsWith('/')) {
-      return window.location.origin;
+  // 2. If NEXT_PUBLIC_API_URL is a full absolute URL, extract its origin
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (apiUrl && apiUrl.startsWith('http')) {
+    try {
+      return new URL(apiUrl).origin;
+    } catch {
+      // Fallback below
     }
   }
 
-  try {
-    const parsed = new URL(url);
-    return parsed.origin;
-  } catch {
-    return url;
+  // 3. Fallback: In production, ALWAYS connect directly to Render, NEVER to Vercel
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://workspace-campus-api.onrender.com';
   }
+
+  return 'http://localhost:4000';
 }
 
-const SOCKET_URL = getSocketUrl(rawUrl);
+const SOCKET_URL = getSocketUrl();
 
 let socket: Socket | null = null;
 
