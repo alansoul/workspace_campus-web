@@ -3,11 +3,27 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getSocket } from '@/lib/socket';
 
+// campus-web/src/features/chat/hooks/useWebRTCCall.ts
 const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
+    // 1. Google Public STUN (For open / residential networks)
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+
+    // 2. OpenRelay Production TURN Server (Bypasses University Firewalls & Symmetric NAT)
+    {
+      urls: [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turn:openrelay.metered.ca:443?transport=tcp',
+        'turns:openrelay.metered.ca:443?transport=tcp',
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
   ],
+  iceCandidatePoolSize: 10,
 };
 
 export interface IncomingCallData {
@@ -38,11 +54,14 @@ export function useWebRTCCall(currentUser?: { id?: string; fullName?: string; em
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [isVideoDisabled, setIsVideoDisabled] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  // 🔄 Camera facing mode: 'user' (front) or 'environment' (back/rear)
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamRef = useRef<MediaStream>(new MediaStream());
   const originalCameraTrackRef = useRef<MediaStreamTrack | null>(null);
+  const activeScreenTrackRef = useRef<MediaStreamTrack | null>(null);
   const iceCandidatesQueue = useRef<RTCIceCandidateInit[]>([]);
 
   // Cleanup all media tracks and active peer connection
@@ -55,6 +74,11 @@ export function useWebRTCCall(currentUser?: { id?: string; fullName?: string; em
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
+    }
+
+    if (activeScreenTrackRef.current) {
+      activeScreenTrackRef.current.stop();
+      activeScreenTrackRef.current = null;
     }
 
     remoteStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -115,8 +139,11 @@ export function useWebRTCCall(currentUser?: { id?: string; fullName?: string; em
 
         const updateRemoteVideoStatus = () => {
           const videoTracks = remoteStreamRef.current.getVideoTracks();
-          const isLive = videoTracks.some((t) => t.readyState === 'live' && !t.muted);
-          setHasRemoteVideo(isLive);
+          const hasLiveVideo = videoTracks.some((t) => t.readyState === 'live');
+          setHasRemoteVideo(hasLiveVideo);
+
+          // Force React state update with a fresh MediaStream instance so the <video> element re-renders
+          setRemoteStream(new MediaStream(remoteStreamRef.current.getTracks()));
         };
 
         updateRemoteVideoStatus();
@@ -314,16 +341,18 @@ export function useWebRTCCall(currentUser?: { id?: string; fullName?: string; em
     };
 
     const handleIceCandidate = async (data: { candidate: RTCIceCandidateInit }) => {
+      if (!data.candidate) return;
       const pc = peerConnectionRef.current;
-      if (!pc || !data.candidate) return;
 
-      if (pc.remoteDescription && pc.remoteDescription.type) {
+      // If peer connection and remote offer are ready, apply candidate immediately
+      if (pc && pc.remoteDescription && pc.remoteDescription.type) {
         try {
           await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
         } catch (e) {
           console.warn('ICE candidate addition failed:', e);
         }
       } else {
+        // Buffer candidate while phone is ringing or offer is resolving
         iceCandidatesQueue.current.push(data.candidate);
       }
     };
@@ -405,7 +434,65 @@ export function useWebRTCCall(currentUser?: { id?: string; fullName?: string; em
     }
   }, [isVideoDisabled]);
 
-  // 5. Bidirectional Screen Sharing (Works for both Caller and Callee simultaneously)
+  // 🔄 Mobile Front / Back Camera Switch (also cycles webcams on PC)
+  const switchCamera = useCallback(async () => {
+    const pc = peerConnectionRef.current;
+    if (!pc || isScreenSharing) return;
+
+    const videoTransceiver = pc
+      .getTransceivers()
+      .find((t) => t.receiver.track.kind === 'video');
+    if (!videoTransceiver) return;
+
+    const nextFacingMode = facingMode === 'user' ? 'environment' : 'user';
+
+    try {
+      // 1. Stop current camera track before opening the other sensor
+      if (originalCameraTrackRef.current) {
+        originalCameraTrackRef.current.stop();
+      }
+
+      // 2. Request next sensor (fallback if device lacks strict environment constraint)
+      let newStream: MediaStream;
+      try {
+        newStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { exact: nextFacingMode },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+      } catch {
+        newStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: nextFacingMode },
+          audio: false,
+        });
+      }
+
+      const newTrack = newStream.getVideoTracks()[0];
+      if (!newTrack) return;
+
+      originalCameraTrackRef.current = newTrack;
+      setFacingMode(nextFacingMode);
+
+      // 3. Swap track on the active WebRTC peer connection
+      await videoTransceiver.sender.replaceTrack(newTrack);
+
+      // 4. Update local stream state for immediate UI feedback
+      const audioTracks = localStreamRef.current
+        ? localStreamRef.current.getAudioTracks()
+        : [];
+      const updatedStream = new MediaStream([...audioTracks, newTrack]);
+      localStreamRef.current = updatedStream;
+      setLocalStream(updatedStream);
+      setIsVideoDisabled(false);
+    } catch (err) {
+      console.warn('Failed to switch camera source:', err);
+    }
+  }, [facingMode, isScreenSharing]);
+
+  // 5. Screen Sharing (With AbortError Timeout Handling)
   const toggleScreenShare = useCallback(async () => {
     const pc = peerConnectionRef.current;
     if (!pc) return;
@@ -415,52 +502,48 @@ export function useWebRTCCall(currentUser?: { id?: string; fullName?: string; em
       .find((t) => t.receiver.track.kind === 'video');
     if (!videoTransceiver) return;
 
-    if (isScreenSharing) {
+    const revertToCamera = async () => {
+      if (activeScreenTrackRef.current) {
+        activeScreenTrackRef.current.stop();
+        activeScreenTrackRef.current = null;
+      }
+
       const camTrack = !isVideoDisabled ? originalCameraTrackRef.current : null;
       await videoTransceiver.sender.replaceTrack(camTrack);
 
       if (localStreamRef.current) {
-        const extraVideos = localStreamRef.current
-          .getVideoTracks()
-          .filter((t) => t !== originalCameraTrackRef.current);
-        extraVideos.forEach((t) => t.stop());
-
         const audioTracks = localStreamRef.current.getAudioTracks();
         const nextTracks = camTrack ? [...audioTracks, camTrack] : audioTracks;
-        const updatedStream = new MediaStream(nextTracks);
-        localStreamRef.current = updatedStream;
-        setLocalStream(updatedStream);
+        const revertedStream = new MediaStream(nextTracks);
+        localStreamRef.current = revertedStream;
+        setLocalStream(revertedStream);
       }
 
       setIsScreenSharing(false);
+    };
+
+    if (isScreenSharing) {
+      await revertToCamera();
     } else {
       try {
+        if (activeScreenTrackRef.current) {
+          activeScreenTrackRef.current.stop();
+          activeScreenTrackRef.current = null;
+        }
+
         const screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
           audio: false,
         });
+
         const screenTrack = screenStream.getVideoTracks()[0];
+        if (!screenTrack) return;
 
-        // Attach onended handler before passing track into state
-        screenTrack.onended = async () => {
-          const cam = !isVideoDisabled ? originalCameraTrackRef.current : null;
-          if (peerConnectionRef.current) {
-            const vTrans = peerConnectionRef.current
-              .getTransceivers()
-              .find((t) => t.receiver.track.kind === 'video');
-            if (vTrans) {
-              await vTrans.sender.replaceTrack(cam);
-            }
-          }
+        activeScreenTrackRef.current = screenTrack;
 
-          const audioTracks = localStreamRef.current
-            ? localStreamRef.current.getAudioTracks()
-            : [];
-          const nextTracks = cam ? [...audioTracks, cam] : audioTracks;
-          const revertedStream = new MediaStream(nextTracks);
-          localStreamRef.current = revertedStream;
-          setLocalStream(revertedStream);
-          setIsScreenSharing(false);
+        // Auto-revert when user clicks browser's native "Stop sharing" bar
+        screenTrack.onended = () => {
+          void revertToCamera();
         };
 
         await videoTransceiver.sender.replaceTrack(screenTrack);
@@ -475,11 +558,16 @@ export function useWebRTCCall(currentUser?: { id?: string; fullName?: string; em
 
         setIsScreenSharing(true);
       } catch (err: unknown) {
-        // Ignore user cancelling the browser screen picker dialog
-        if (err instanceof DOMException && err.name === 'NotAllowedError') {
+        // Gracefully ignore cancel or browser capture timeout aborts
+        if (
+          err instanceof DOMException &&
+          (err.name === 'NotAllowedError' || err.name === 'AbortError')
+        ) {
+          setIsScreenSharing(false);
           return;
         }
         console.warn('Screen share error:', err);
+        setIsScreenSharing(false);
       }
     }
   }, [isScreenSharing, isVideoDisabled]);
@@ -494,6 +582,8 @@ export function useWebRTCCall(currentUser?: { id?: string; fullName?: string; em
     isAudioMuted,
     isVideoDisabled,
     isScreenSharing,
+    facingMode,
+    switchCamera,
     startCall,
     acceptCall,
     rejectCall,

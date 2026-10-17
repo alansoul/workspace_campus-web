@@ -45,6 +45,7 @@ export function ChatApp() {
     isAudioMuted,
     isVideoDisabled,
     isScreenSharing,
+    switchCamera,
     startCall,
     acceptCall,
     rejectCall,
@@ -157,6 +158,7 @@ export function ChatApp() {
           onToggleAudio={toggleAudio}
           onToggleVideo={toggleVideo}
           onToggleScreenShare={toggleScreenShare}
+          onSwitchCamera={switchCamera}
           onEndCall={endCall}
           getInitials={getInitials}
         />
