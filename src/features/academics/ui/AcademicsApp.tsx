@@ -23,6 +23,7 @@ import { McpPluginsView } from './views/McpPluginsView';
 import { AssignmentsView } from './views/AssignmentsView';
 import { NoticesView } from './views/NoticesView';
 import { CampusAiDrawer } from './components/CampusAiDrawer';
+import { CalendarView } from './views/CalendarView';
 
 export function AcademicsApp() {
   const {
@@ -446,6 +447,15 @@ export function AcademicsApp() {
               institutionName={institutionName}
               isAdmin={isAdmin}
               onOpenUploadModal={() => setIsTimetableModalOpen(true)}
+            />
+          )}
+
+          {activeTab === 'calendar' && (
+            <CalendarView
+              events={events}
+              assignments={assignments}
+              exams={exams}
+              timetable={timetable}
             />
           )}
 
