@@ -230,26 +230,62 @@ export function useChat(activeUser?: { id?: string; fullName?: string; email?: s
     (messageId: string, mode: 'SOFT' | 'HARD' = 'SOFT') => {
       if (!currentChannel) return;
       const socket = socketRef.current || getSocket();
-      socket.emit('delete_message', {
-        messageId,
-        channelId: currentChannel.id,
-        mode,
-      });
+
+      // 1. Optimistic UI Update: update UI immediately so it vanishes right away
+      setMessages((prev) =>
+        mode === 'SOFT'
+          ? prev.map((m) =>
+              m.id === messageId
+                ? {
+                    ...m,
+                    content: '🚫 This message was deleted by Admin',
+                    isDeleted: true,
+                    fileUrl: undefined,
+                  }
+                : m,
+            )
+          : prev.filter((m) => m.id !== messageId),
+      );
+
+      // 2. Send deletion request with explicit user identity
+      socket.emit(
+        'delete_message',
+        {
+          messageId,
+          channelId: currentChannel.id,
+          mode,
+          userId: activeUser?.id,
+          userEmail: activeUser?.email,
+          userRole: (activeUser as { role?: string })?.role,
+        },
+        (response?: { error?: string }) => {
+          if (response?.error) {
+            window.alert(`Delete failed: ${response.error}`);
+          }
+        },
+      );
     },
-    [currentChannel],
+    [currentChannel, activeUser],
   );
 
   const editMessage = useCallback(
     (messageId: string, content: string) => {
       if (!currentChannel || !content.trim()) return;
       const socket = socketRef.current || getSocket();
+
+      // Optimistic UI update
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, content: content.trim(), isEdited: true } : m)),
+      );
+
       socket.emit('edit_message', {
         messageId,
         channelId: currentChannel.id,
         content: content.trim(),
+        userId: activeUser?.id,
       });
     },
-    [currentChannel],
+    [currentChannel, activeUser],
   );
 
   const addFriendByEmail = async (friendEmail: string) => {
