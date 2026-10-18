@@ -79,20 +79,22 @@ export function CampusAiDrawer({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isThinkingFlyoutOpen, setIsThinkingFlyoutOpen] = useState(false);
 
-  // Settings & Custom API Key State
+  // Settings & Custom API Key State (In-Memory Only, Never Stored in LocalStorage)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [customApiKey, setCustomApiKey] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('user_gemini_api_key') || '';
-    }
-    return '';
-  });
-  const [apiKeyInput, setApiKeyInput] = useState(customApiKey);
+  const [customApiKey, setCustomApiKey] = useState<string>('');
+  const [apiKeyInput, setApiKeyInput] = useState('');
   const [isTestingKey, setIsTestingKey] = useState(false);
   const [testResult, setTestResult] = useState<{
     valid: boolean;
     message: string;
   } | null>(null);
+
+  // Security Purge: Automatically erase any exposed Gemini key from browser Local Storage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user_gemini_api_key');
+    }
+  }, []);
 
   // Screen Reading Context Toggle
   const [readPageContext, setReadPageContext] = useState(true);
@@ -163,12 +165,9 @@ export function CampusAiDrawer({
         message: res.message,
       });
 
-      // Auto-save if verified valid
+      // In-Memory save only (session-based)
       if (res.valid) {
         setCustomApiKey(apiKeyInput.trim());
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('user_gemini_api_key', apiKeyInput.trim());
-        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Verification failed.';
@@ -180,15 +179,7 @@ export function CampusAiDrawer({
 
   const handleSaveApiKey = (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanKey = apiKeyInput.trim();
-    setCustomApiKey(cleanKey);
-    if (typeof window !== 'undefined') {
-      if (cleanKey) {
-        localStorage.setItem('user_gemini_api_key', cleanKey);
-      } else {
-        localStorage.removeItem('user_gemini_api_key');
-      }
-    }
+    setCustomApiKey(apiKeyInput.trim());
     setIsSettingsOpen(false);
   };
 
@@ -483,9 +474,9 @@ ${noticesSummary || 'No active notices'}
           </button>
           <span className="text-[10px] font-semibold text-slate-500">
             {customApiKey ? (
-              <span className="text-indigo-600 font-mono">🔑 Custom Key ({customApiKey.slice(0, 6)}...)</span>
+              <span className="text-indigo-600 font-mono">🔑 Session Override ({customApiKey.slice(0, 6)}...)</span>
             ) : (
-              <span className="text-slate-400">Server Key (.env)</span>
+              <span className="text-emerald-600 font-medium">🛡️ Secure Server Engine (Render .env)</span>
             )}
           </span>
         </div>
