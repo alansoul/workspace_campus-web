@@ -24,4 +24,6 @@ export interface ChatMessage {
   fileName?: string | null;
   fileSize?: number | null;
   createdAt: string;
+  isDeleted?: boolean; // <-- ADD THIS
+  isEdited?: boolean;
 }

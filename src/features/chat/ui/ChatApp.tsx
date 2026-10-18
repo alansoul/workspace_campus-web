@@ -32,6 +32,8 @@ export function ChatApp() {
     isLoadingMessages,
     isConnected,
     sendMessage,
+    deleteMessage, // <-- from useChat
+    editMessage,
     uploadFile,
     addFriendByEmail,
   } = useChat(activeUser);
@@ -126,7 +128,11 @@ export function ChatApp() {
         isLoadingMessages={isLoadingMessages}
         currentUserId={activeUser?.id}
         currentUserName={userName}
+        currentUserEmail={activeUser?.email}
+        currentUserRole={(activeUser as { role?: string })?.role}
         onSendMessage={sendMessage}
+        onDeleteMessage={deleteMessage}
+        onEditMessage={editMessage}
         onUploadFile={uploadFile}
         onStartCall={(isVideo) => {
           if (!currentChannel) return;

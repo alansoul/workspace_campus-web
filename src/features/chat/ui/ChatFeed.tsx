@@ -33,6 +33,8 @@ interface ChatFeedProps {
   isLoadingMessages: boolean;
   currentUserId?: string;
   currentUserName?: string;
+  currentUserEmail?: string; // <-- ADDED
+  currentUserRole?: string;
   onSendMessage: (
     content: string,
     attachment?: {
@@ -42,6 +44,8 @@ interface ChatFeedProps {
       fileSize?: number;
     },
   ) => void;
+  onDeleteMessage?: (messageId: string, mode?: 'SOFT' | 'HARD') => void; // <-- ADDED
+  onEditMessage?: (messageId: string, content: string) => void;
   onUploadFile: (file: File) => Promise<{
     fileUrl: string;
     fileName: string;
@@ -60,7 +64,10 @@ export function ChatFeed({
   isLoadingMessages,
   currentUserId,
   currentUserName,
+  currentUserRole,
   onSendMessage,
+  onDeleteMessage,
+  onEditMessage,
   onUploadFile,
   onStartCall,
   getInitials,
@@ -76,6 +83,9 @@ export function ChatFeed({
     fileSize: number;
   } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  // Inline edit state for messages
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editInput, setEditInput] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -282,16 +292,21 @@ const getFileUrl = (fileUrl?: string | null): string => {
           messages.map((msg) => {
             const isMe =
               Boolean(currentUserId && msg.senderId === currentUserId) ||
-              Boolean(
-                currentUserName && msg.senderName === currentUserName,
-              );
+              Boolean(currentUserName && msg.senderName === currentUserName);
+
+            const isAdmin =
+              currentUserRole === 'ADMIN' ||
+              currentUserRole === 'SUPERADMIN';
+
+            const canEdit = isMe && !msg.isDeleted;
+            const canDelete = (isMe || isAdmin) && !msg.isDeleted;
 
             const fileFullUrl = getFileUrl(msg.fileUrl);
 
             return (
               <div
                 key={msg.id}
-                className={`flex w-full items-end gap-2.5 sm:gap-3 ${
+                className={`group relative flex w-full items-end gap-2.5 sm:gap-3 ${
                   isMe ? 'justify-end' : 'justify-start'
                 }`}
               >
@@ -302,7 +317,7 @@ const getFileUrl = (fileUrl?: string | null): string => {
                 )}
 
                 <div
-                  className={`flex min-w-0 max-w-[88%] flex-col sm:max-w-[75%] ${
+                  className={`relative flex min-w-0 max-w-[88%] flex-col sm:max-w-[75%] ${
                     isMe ? 'items-end' : 'items-start'
                   }`}
                 >
@@ -317,40 +332,80 @@ const getFileUrl = (fileUrl?: string | null): string => {
                           minute: '2-digit',
                         })}
                       </span>
+                      {msg.isEdited && (
+                        <span className="text-[9px] italic text-slate-400 dark:text-slate-500">
+                          (edited)
+                        </span>
+                      )}
                     </div>
                   )}
 
-                  <div
-                    className={`min-w-0 rounded-2xl p-3 text-xs leading-relaxed shadow-sm sm:p-3.5 ${
-                      isMe
-                        ? 'rounded-br-md bg-linear-to-br from-indigo-600 to-violet-600 text-white shadow-indigo-500/10'
-                        : 'rounded-bl-md border border-slate-200/80 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
-                    }`}
-                  >
-                    {/* Image attachment */}
-                    {msg.fileType === 'IMAGE' && msg.fileUrl && (
-                      <div className="mb-2 max-w-full overflow-hidden rounded-xl border border-black/5 bg-slate-100 dark:border-white/10 dark:bg-slate-900">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={fileFullUrl}
-                          alt={msg.fileName || 'Photo attachment'}
-                          loading="lazy"
-                          className="max-h-80 max-w-full cursor-pointer object-contain transition hover:opacity-95"
-                          onClick={() =>
-                            window.open(
-                              fileFullUrl,
-                              '_blank',
-                              'noopener,noreferrer',
-                            )
-                          }
-                        />
+                  {/* Soft-deleted message banner */}
+                  {msg.isDeleted ? (
+                    <div className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-slate-100/80 px-3.5 py-2 text-xs italic text-slate-400 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-500">
+                      <span>🚫</span>
+                      <span>{msg.content || 'This message was deleted'}</span>
+                    </div>
+                  ) : editingMessageId === msg.id ? (
+                    /* Inline Edit Mode */
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (editInput.trim() && onEditMessage) {
+                          onEditMessage(msg.id, editInput.trim());
+                        }
+                        setEditingMessageId(null);
+                      }}
+                      className="flex w-full flex-col gap-1.5 rounded-2xl border border-indigo-400 bg-white p-2 shadow-md dark:border-indigo-500 dark:bg-slate-900"
+                    >
+                      <input
+                        type="text"
+                        value={editInput}
+                        onChange={(e) => setEditInput(e.target.value)}
+                        className="w-full bg-transparent px-2 py-1 text-xs text-slate-800 outline-none dark:text-white"
+                        autoFocus
+                      />
+                      <div className="flex items-center justify-end gap-1.5 text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => setEditingMessageId(null)}
+                          className="px-2 py-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="rounded-lg bg-indigo-600 px-3 py-1 font-semibold text-white hover:bg-indigo-700"
+                        >
+                          Save
+                        </button>
                       </div>
-                    )}
+                    </form>
+                  ) : (
+                    /* Regular Message Bubble */
+                    <div
+                      className={`min-w-0 rounded-2xl p-3 text-xs leading-relaxed shadow-sm sm:p-3.5 ${
+                        isMe
+                          ? 'rounded-br-md bg-linear-to-br from-indigo-600 to-violet-600 text-white shadow-indigo-500/10'
+                          : 'rounded-bl-md border border-slate-200/80 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                      }`}
+                    >
+                      {/* Image attachment */}
+                      {msg.fileType === 'IMAGE' && msg.fileUrl && (
+                        <div className="mb-2 max-w-full overflow-hidden rounded-xl border border-black/5 bg-slate-100 dark:border-white/10 dark:bg-slate-900">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={fileFullUrl}
+                            alt={msg.fileName || 'Photo attachment'}
+                            loading="lazy"
+                            className="max-h-80 max-w-full cursor-pointer object-contain transition hover:opacity-95"
+                            onClick={() => window.open(fileFullUrl, '_blank', 'noopener,noreferrer')}
+                          />
+                        </div>
+                      )}
 
-                    {/* PDF and document attachment */}
-                    {(msg.fileType === 'PDF' ||
-                      msg.fileType === 'DOCUMENT') &&
-                      msg.fileUrl && (
+                      {/* PDF & Document attachment */}
+                      {(msg.fileType === 'PDF' || msg.fileType === 'DOCUMENT') && msg.fileUrl && (
                         <div
                           className={`mb-2 flex min-w-0 items-center justify-between gap-3 rounded-xl border p-3 ${
                             isMe
@@ -361,23 +416,16 @@ const getFileUrl = (fileUrl?: string | null): string => {
                           <div className="flex min-w-0 items-center gap-2.5">
                             <div
                               className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white ${
-                                msg.fileType === 'PDF'
-                                  ? 'bg-rose-500'
-                                  : 'bg-indigo-500'
+                                msg.fileType === 'PDF' ? 'bg-rose-500' : 'bg-indigo-500'
                               }`}
                             >
                               <FileText className="h-5 w-5" />
                             </div>
-
                             <div className="min-w-0">
-                              <p className="truncate text-xs font-semibold">
-                                {msg.fileName || 'Attachment'}
-                              </p>
+                              <p className="truncate text-xs font-semibold">{msg.fileName || 'Attachment'}</p>
                               <p
                                 className={`mt-1 text-[10px] ${
-                                  isMe
-                                    ? 'text-indigo-100'
-                                    : 'text-slate-500 dark:text-slate-400'
+                                  isMe ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'
                                 }`}
                               >
                                 {formatFileSize(msg.fileSize)}
@@ -386,7 +434,6 @@ const getFileUrl = (fileUrl?: string | null): string => {
                               </p>
                             </div>
                           </div>
-
                           <a
                             href={fileFullUrl}
                             target="_blank"
@@ -398,35 +445,78 @@ const getFileUrl = (fileUrl?: string | null): string => {
                                 : 'bg-white text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
                             }`}
                             title="Download attachment"
-                            aria-label="Download attachment"
                           >
                             <Download className="h-4 w-4" />
                           </a>
                         </div>
                       )}
 
-                    {msg.content && (
-                      <p className="whitespace-pre-wrap-break-words">
-                        {msg.content}
-                      </p>
-                    )}
+                      {msg.content && <p className="whitespace-pre-wrap-break-words">{msg.content}</p>}
 
+                      <div
+                        className={`mt-1.5 flex items-center justify-end gap-1 text-[9px] ${
+                          isMe ? 'text-indigo-100/80' : 'text-slate-400 dark:text-slate-500'
+                        }`}
+                      >
+                        {isMe && msg.isEdited && <span className="italic">(edited)</span>}
+                        <span>
+                          {new Date(msg.createdAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                        {isMe && <Check className="h-3 w-3" />}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* WhatsApp-Style Hover Action Bar */}
+                  {!msg.isDeleted && editingMessageId !== msg.id && (canEdit || canDelete) && (
                     <div
-                      className={`mt-1.5 flex items-center justify-end gap-1 text-[9px] ${
-                        isMe
-                          ? 'text-indigo-100/80'
-                          : 'text-slate-400 dark:text-slate-500'
+                      className={`absolute -top-3 z-10 hidden items-center gap-1 rounded-xl border border-slate-200 bg-white px-1.5 py-0.5 shadow-md group-hover:flex dark:border-slate-700 dark:bg-slate-800 ${
+                        isMe ? 'right-1' : 'left-1'
                       }`}
                     >
-                      <span>
-                        {new Date(msg.createdAt).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                      {isMe && <Check className="h-3 w-3" />}
+                      {/* Edit Button (Own messages only) */}
+                      {canEdit && (
+                        <button
+                          type="button"
+                          title="Edit message"
+                          onClick={() => {
+                            setEditingMessageId(msg.id);
+                            setEditInput(msg.content);
+                          }}
+                          className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-700 dark:hover:text-indigo-300"
+                        >
+                          ✏️
+                        </button>
+                      )}
+
+                      {/* Delete Button (Own messages OR Admin on any message) */}
+                      {canDelete && (
+                        <button
+                          type="button"
+                          title={isAdmin && !isMe ? 'Delete as Admin' : 'Delete message'}
+                          onClick={() => {
+                            const confirmText =
+                              isAdmin && !isMe
+                                ? `Delete message from "${msg.senderName}" as Admin?`
+                                : 'Delete this message for everyone?';
+                            if (window.confirm(confirmText)) {
+                              onDeleteMessage?.(msg.id, 'SOFT');
+                            }
+                          }}
+                          className={`rounded-md p-1 ${
+                            isAdmin && !isMe
+                              ? 'text-rose-500 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/40'
+                              : 'text-slate-400 hover:bg-slate-100 hover:text-rose-600 dark:hover:bg-slate-700'
+                          }`}
+                        >
+                          🗑️
+                        </button>
+                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             );

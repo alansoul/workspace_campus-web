@@ -151,12 +151,34 @@ export function useChat(activeUser?: { id?: string; fullName?: string; email?: s
       }
     };
 
+    const onMessageDeleted = (data: { messageId: string; isSoftDeleted?: boolean; newContent?: string }) => {
+      setMessages((prev) =>
+        data.isSoftDeleted
+          ? prev.map((m) =>
+              m.id === data.messageId
+                ? { ...m, content: data.newContent || '🚫 This message was deleted', isDeleted: true, fileUrl: undefined }
+                : m
+            )
+          : prev.filter((m) => m.id !== data.messageId)
+      );
+    };
+
+    const onMessageEdited = (data: { messageId: string; content: string }) => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === data.messageId ? { ...m, content: data.content, isEdited: true } : m))
+      );
+    };
+
     socket.on('newMessage', onNewMessage);
+    socket.on('message_deleted', onMessageDeleted);
+    socket.on('message_edited', onMessageEdited);
 
     return () => {
       isMounted = false;
       socket.emit('leaveChannel', channelId);
       socket.off('newMessage', onNewMessage);
+      socket.off('message_deleted', onMessageDeleted);
+      socket.off('message_edited', onMessageEdited);
     };
   }, [currentChannel]);
 
@@ -202,6 +224,32 @@ export function useChat(activeUser?: { id?: string; fullName?: string; email?: s
       });
     },
     [currentChannel, activeUser],
+  );
+
+  const deleteMessage = useCallback(
+    (messageId: string, mode: 'SOFT' | 'HARD' = 'SOFT') => {
+      if (!currentChannel) return;
+      const socket = socketRef.current || getSocket();
+      socket.emit('delete_message', {
+        messageId,
+        channelId: currentChannel.id,
+        mode,
+      });
+    },
+    [currentChannel],
+  );
+
+  const editMessage = useCallback(
+    (messageId: string, content: string) => {
+      if (!currentChannel || !content.trim()) return;
+      const socket = socketRef.current || getSocket();
+      socket.emit('edit_message', {
+        messageId,
+        channelId: currentChannel.id,
+        content: content.trim(),
+      });
+    },
+    [currentChannel],
   );
 
   const addFriendByEmail = async (friendEmail: string) => {
@@ -292,6 +340,8 @@ export function useChat(activeUser?: { id?: string; fullName?: string; email?: s
     isLoadingMessages,
     isConnected,
     sendMessage,
+    deleteMessage, // <-- ADDED
+    editMessage,
     uploadFile,
     addFriendByEmail,
     createGroup,
