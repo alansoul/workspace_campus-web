@@ -23,7 +23,6 @@ export function NoticesView({
   onCreateNotice: propOnCreateNotice,
   onImportFromWhatsApp: propOnImportFromWhatsApp,
 }: NoticesViewProps = {}) {
-  // Use workspace fallback if props are not explicitly supplied
   const workspace = useAcademicsWorkspace();
 
   const notices = propNotices ?? workspace.notices;
@@ -34,6 +33,9 @@ export function NoticesView({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'MANUAL' | 'WHATSAPP'>('WHATSAPP');
 
+  // Email / Notice Reader Modal State (Option 1)
+  const [selectedNotice, setSelectedNotice] = useState<CampusNotice | null>(null);
+
   // Manual Notice State
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Circular');
@@ -42,6 +44,18 @@ export function NoticesView({
 
   // WhatsApp Raw Text State
   const [rawText, setRawText] = useState('');
+
+  const getGmailDeepLink = (noticeTitle: string) => {
+    const cleanSearch = noticeTitle.replace(/^Fwd:\s*/i, '').trim();
+    return `https://mail.google.com/mail/u/0/#search/${encodeURIComponent(cleanSearch)}`;
+  };
+
+  const handleNoticeClick = (notice: CampusNotice) => {
+    setSelectedNotice(notice);
+    if (notice.isUnread) {
+      markNoticeAsRead(notice.id);
+    }
+  };
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +99,7 @@ export function NoticesView({
         <button
           type="button"
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-sm transition-all cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-xs transition-all cursor-pointer"
         >
           <span className="text-base font-bold leading-none">+</span> Post Notice / WhatsApp
         </button>
@@ -101,8 +115,8 @@ export function NoticesView({
           notices.map((notice) => (
             <div
               key={notice.id}
-              onClick={() => markNoticeAsRead(notice.id)}
-              className={`bg-white border rounded-2xl p-5 shadow-xs transition-all cursor-pointer hover:border-indigo-300 ${
+              onClick={() => handleNoticeClick(notice)}
+              className={`group bg-white border rounded-2xl p-5 shadow-xs transition-all cursor-pointer hover:border-indigo-300 ${
                 notice.isUnread ? 'border-indigo-200 bg-indigo-50/20' : 'border-slate-200/80'
               }`}
             >
@@ -123,12 +137,87 @@ export function NoticesView({
                 <span className="text-xs text-slate-400 font-medium">{notice.dateStr}</span>
               </div>
 
-              <h3 className="font-semibold text-slate-900 text-base mb-1">{notice.title}</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">{notice.summary}</p>
+              <h3 className="font-semibold text-slate-900 text-base mb-1 group-hover:text-indigo-600 transition-colors">
+                {notice.title}
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">{notice.summary}</p>
+
+              {/* Action Footer */}
+              <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span className="font-semibold text-indigo-600 group-hover:underline">
+                  Click to read email &rarr;
+                </span>
+                <a
+                  href={getGmailDeepLink(notice.title)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-slate-400 hover:text-indigo-600 font-medium px-2 py-0.5 rounded-md hover:bg-slate-50 transition-colors"
+                >
+                  Open in Gmail ↗
+                </a>
+              </div>
             </div>
           ))
         )}
       </div>
+
+      {/* Option 1: In-App Email / Notice Reader Modal */}
+      {selectedNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-100">
+          <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl border border-slate-100 overflow-hidden space-y-4 p-6">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700">
+                    {selectedNotice.category || 'Academic'}
+                  </span>
+                  <span className="text-xs text-slate-400">{selectedNotice.dateStr}</span>
+                </div>
+                <h3 className="mt-2 text-lg font-bold text-slate-900 leading-snug">
+                  {selectedNotice.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedNotice(null)}
+                className="text-slate-400 hover:text-slate-600 text-xl font-bold cursor-pointer p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="max-h-[50vh] overflow-y-auto bg-slate-50/70 p-4 rounded-xl border border-slate-100 space-y-2">
+              <span className="text-[10px] font-mono text-slate-400 block border-b border-slate-200/60 pb-1">
+                Source: Ingested Campus Notice / Email
+              </span>
+              <p className="text-sm leading-relaxed text-slate-800 whitespace-pre-wrap font-sans">
+                {selectedNotice.summary}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setSelectedNotice(null)}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+
+              <a
+                href={getGmailDeepLink(selectedNotice.title)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-colors cursor-pointer"
+              >
+                <span>Open in Gmail</span>
+                <span>↗</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal with WhatsApp Ingestion & Manual Creation Tabs */}
       {isModalOpen && (
