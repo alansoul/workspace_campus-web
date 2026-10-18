@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import { useAuthSession } from '@/features/auth/hooks/useAuthSession';
 import { AppLauncher } from '@/components/layout/AppLauncher';
 import { UserProfileMenu } from '@/components/layout/UserProfileMenu';
+import { CallProvider } from '@/features/chat/context/CallContext';
 
 // Self-contained loader: mounts & unmounts with isLoading (No cascading setState)
 function WorkspaceLoader() {
@@ -69,33 +70,35 @@ export default function SuiteLayout({ children }: { children: React.ReactNode })
   const universityTitle = user.universityName || 'Campus Workspace';
 
   return (
-    <div className="min-h-screen bg-[#F8FAFD] text-slate-900 flex flex-col font-['Google_Sans',sans-serif]">
-      {/* Universal Workspace Header Bar */}
-      <header className="h-14 border-b border-slate-800 bg-[#0E1525] text-white flex items-center justify-between px-4 sm:px-6 sticky top-0 z-40 select-none">
-        <div className="flex items-center gap-3 min-w-0">
-          <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0 group cursor-pointer">
-            <div className="w-8 h-8 rounded-xl bg-linear-to-tr from-cyan-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-xs group-hover:scale-105 transition-transform">
-              ✦
-            </div>
-            <span className="font-semibold text-sm tracking-tight text-white group-hover:text-cyan-300 transition-colors truncate max-w-50 sm:max-w-xs">
-              {universityTitle}
-            </span>
-          </Link>
-          <span className="text-slate-600">/</span>
-          <span className="text-xs text-slate-300 font-medium truncate">{currentApp}</span>
-        </div>
+    <CallProvider>
+      <div className="min-h-screen bg-[#F8FAFD] text-slate-900 flex flex-col font-['Google_Sans',sans-serif]">
+        {/* Universal Workspace Header Bar */}
+        <header className="h-14 border-b border-slate-800 bg-[#0E1525] text-white flex items-center justify-between px-4 sm:px-6 sticky top-0 z-40 select-none">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0 group cursor-pointer">
+              <div className="w-8 h-8 rounded-xl bg-linear-to-tr from-cyan-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-xs group-hover:scale-105 transition-transform">
+                ✦
+              </div>
+              <span className="font-semibold text-sm tracking-tight text-white group-hover:text-cyan-300 transition-colors truncate max-w-50 sm:max-w-xs">
+                {universityTitle}
+              </span>
+            </Link>
+            <span className="text-slate-600">/</span>
+            <span className="text-xs text-slate-300 font-medium truncate">{currentApp}</span>
+          </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          {/* 9-Dot App Launcher */}
-          <AppLauncher userRole={user.role || 'STUDENT'} />
+          <div className="flex items-center gap-3 shrink-0">
+            {/* 9-Dot App Launcher */}
+            <AppLauncher userRole={user.role || 'STUDENT'} />
 
-          {/* User Profile Avatar & Dropdown Menu */}
-          <UserProfileMenu />
-        </div>
-      </header>
+            {/* User Profile Avatar & Dropdown Menu */}
+            <UserProfileMenu />
+          </div>
+        </header>
 
-      {/* Main Workspace Page View */}
-      <main className="flex-1 overflow-y-auto">{children}</main>
-    </div>
+        {/* Main Workspace Page View */}
+        <main className="min-h-0 flex-1">{children}</main>
+      </div>
+    </CallProvider>
   );
 }

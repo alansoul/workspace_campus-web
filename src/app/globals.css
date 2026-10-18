@@ -169,3 +169,78 @@ body.search-modal-open [data-search-modal-portal] {
 body.search-modal-open {
   overflow: hidden;
 }
+
+
+
+/* ==========================================================================
+   CAMPUS CHAT — LIGHT PASTEL THEME
+   Scoped to the chat route/components to avoid affecting marketing pages.
+   ========================================================================== */
+
+.chat-workspace {
+  color: #172033;
+  background:
+    radial-gradient(
+      ellipse at 10% 0%,
+      rgb(191 219 254 / 35%),
+      transparent 38%
+    ),
+    radial-gradient(
+      ellipse at 95% 10%,
+      rgb(233 213 255 / 38%),
+      transparent 40%
+    ),
+    linear-gradient(145deg, #f8fbff 0%, #f8f6ff 55%, #fff7fc 100%);
+}
+
+.chat-glass-panel {
+  border: 1px solid rgb(255 255 255 / 80%);
+  background: rgb(255 255 255 / 78%);
+  box-shadow: 0 8px 30px rgb(80 75 160 / 5%);
+  backdrop-filter: blur(18px);
+}
+
+.chat-soft-border {
+  border-color: rgb(148 163 184 / 18%);
+}
+
+.chat-gradient-text {
+  background: linear-gradient(100deg, #4f46e5, #9333ea, #c026d3);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.chat-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 35%) transparent;
+}
+
+.chat-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.chat-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(148 163 184 / 35%);
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgb(129 140 248 / 60%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-workspace *,
+  .chat-workspace *::before,
+  .chat-workspace *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

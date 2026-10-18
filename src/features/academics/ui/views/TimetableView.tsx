@@ -44,7 +44,7 @@ export function TimetableView({
           <button
             type="button"
             onClick={onOpenUploadModal}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-linear-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition"
           >
             <span>⚡ Upload Timetable (PDF / OCR)</span>
           </button>

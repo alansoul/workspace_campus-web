@@ -1,25 +1,24 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { useDomainResolver } from '../hooks/useDomainResolver';
 import {
   Eye,
   EyeOff,
-  Check,
   ArrowRight,
   ArrowLeft,
   Mail,
-  KeyRound,
   ShieldCheck,
   AlertTriangle,
   Lock,
+  Sparkles,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { ForgotPasswordForm } from './ForgotPasswordForm';
 import { GoogleOAuthButton } from './GoogleOAuthButton';
+import { AuthBackground } from './AuthBackground';
 
 interface ModernAuthCardProps {
   initialMode?: 'signin' | 'signup';
@@ -45,7 +44,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
   const redirectUrl = sanitizeRedirect(searchParams.get('redirect'));
 
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
-  const [authMethod, setAuthMethod] = useState<'otp' | 'password'>('otp');
+  const [authMethod, setAuthMethod] = useState<'otp' | 'password'>('password');
   const [step, setStep] = useState<Step>('input');
 
   const [name, setName] = useState('');
@@ -331,6 +330,26 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
     }
   };
 
+  const handleResendOtp = async () => {
+    resetMessages();
+    setIsLoading(true);
+
+    try {
+      await apiFetch('/auth/otp/request', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: normalizedEmail,
+          purpose: mode === 'signup' ? 'REGISTER' : 'LOGIN',
+        }),
+      });
+      setMessage(`A new verification code was sent to ${normalizedEmail}.`);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to resend verification code.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const title =
     step === 'verify-otp'
       ? 'Verify your code'
@@ -356,58 +375,20 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
               : 'Enter your university or @gmail.com email to continue';
 
   return (
-    <div className="min-h-screen bg-linear-to-tr from-indigo-100 via-purple-50 to-blue-100 flex items-center justify-center p-4 sm:p-6 font-['Google_Sans',sans-serif] select-none">
-      <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-145">
-        {/* Left: Branding */}
-        <div className="md:col-span-5 bg-linear-to-br from-[#1E1B4B] via-[#312E81] to-[#4338CA] p-8 text-white flex flex-col justify-between relative overflow-hidden">
-          <div className="space-y-4 relative z-10">
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-linear-to-tr from-cyan-400 to-indigo-400 flex items-center justify-center text-white font-bold text-sm shadow-xs">
-                ✦
+    <AuthBackground>
+      <div className="w-full max-w-120 overflow-hidden rounded-[26px] border border-white/80 bg-white/72 shadow-[0_20px_60px_rgba(71,102,190,0.16)] backdrop-blur-2xl">
+        <div className="flex flex-col gap-4 bg-white/35 p-5 sm:gap-5 sm:p-7">
+          <div className="space-y-4">
+            <div className="space-y-2 text-center">
+              <div className="mx-auto grid h-11 w-11 place-items-center rounded-[14px] bg-linear-to-br from-sky-400 to-indigo-600 text-white shadow-md shadow-blue-500/20">
+                <Sparkles className="h-5 w-5" />
               </div>
-              <span className="font-semibold text-lg tracking-tight">
-                Northstar Workspace
-              </span>
-            </Link>
-
-            <div className="pt-8">
-              <span className="text-[11px] font-bold uppercase tracking-wider bg-white/10 px-3 py-1 rounded-full text-cyan-300">
-                Single Sign-On
-              </span>
-              <h2 className="text-2xl font-semibold mt-3 leading-snug">
-                One verified account for all university apps.
-              </h2>
-              <p className="text-xs text-indigo-200 mt-2 leading-relaxed">
-                Direct OTP access to Campus Academics, Circle Chat Rooms, and
-                Workflow Escrow.
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-2.5 text-xs text-indigo-200 pt-8 relative z-10 border-t border-indigo-500/30">
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-cyan-400 shrink-0" />
-              <span>Verified @gmail.com & campus domains only</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-cyan-400 shrink-0" />
-              <span>OTP verify → create password on first signup</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-cyan-400 shrink-0" />
-              <span>Then sign in with password or OTP anytime</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Form */}
-        <div className="md:col-span-7 p-8 sm:p-12 flex flex-col justify-between bg-white">
-          <div className="space-y-5">
-            <div>
-              <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
-                {title}
+              <h3 className="text-[23px] font-bold tracking-tight text-slate-900 sm:text-2xl">
+                {step === 'input' && mode === 'signin' ? 'Welcome back' : title}
               </h3>
-              <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
+              <p className="mx-auto max-w-sm text-[13px] leading-relaxed text-slate-500">
+                {subtitle}
+              </p>
             </div>
 
             {/* University badge */}
@@ -425,7 +406,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
 
             {/* Gmail badge */}
             {isGmail && step === 'input' && (
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-center justify-between">
+              <div className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white/45 px-3 py-2 text-[11px] text-slate-600">
                 <span className="font-medium">✉️ Personal Google Account</span>
                 <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">
                   Individual
@@ -463,10 +444,10 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
 
             {/* STEP 1: Email / Password */}
             {step === 'input' && (
-              <form onSubmit={handleSubmitEmailOrPassword} className="space-y-4">
+              <form onSubmit={handleSubmitEmailOrPassword} className="space-y-3">
                 {mode === 'signup' && (
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                    <label className="mb-1 block text-[11px] font-medium text-slate-700">
                       Full Name
                     </label>
                     <input
@@ -475,13 +456,52 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="e.g. Alan Soul"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1A73E8]"
+                      className="w-full rounded-xl border border-indigo-100 bg-white/85 px-4 py-2.5 text-[13px] text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
                     />
                   </div>
                 )}
 
+                {mode === 'signin' && (
+                  <div
+                    className="grid grid-cols-2 rounded-full border border-indigo-100 bg-indigo-50/80 p-1"
+                    role="group"
+                    aria-label="Authentication method"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMethod('password');
+                        resetMessages();
+                      }}
+                      aria-pressed={authMethod === 'password'}
+                      className={`rounded-full px-4 py-2 text-[13px] font-semibold transition ${
+                        authMethod === 'password'
+                          ? 'bg-white text-blue-600 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      Password
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMethod('otp');
+                        resetMessages();
+                      }}
+                      aria-pressed={authMethod === 'otp'}
+                      className={`rounded-full px-4 py-2 text-[13px] font-semibold transition ${
+                        authMethod === 'otp'
+                          ? 'bg-white text-blue-600 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      OTP Code
+                    </button>
+                  </div>
+                )}
+
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                  <label className="mb-1 block text-[11px] font-medium text-slate-700">
                     Email address
                   </label>
                   <div className="relative">
@@ -491,10 +511,10 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="student@univ.edu.in or you@gmail.com"
-                      className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 ${
+                      className={`w-full rounded-xl border bg-white/85 py-2.5 pl-11 pr-4 text-[13px] text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:ring-4 ${
                         isInvalidDomain
-                          ? 'border-amber-400 focus:ring-amber-400'
-                          : 'border-slate-300 focus:ring-[#1A73E8]'
+                          ? 'border-amber-400 focus:border-amber-400 focus:ring-amber-100'
+                          : 'border-indigo-100 focus:border-blue-400 focus:ring-blue-100'
                       }`}
                     />
                     <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -503,7 +523,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
 
                 {authMethod === 'password' && (
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                    <label className="mb-1 block text-[11px] font-medium text-slate-700">
                       Password
                     </label>
                     <div className="relative">
@@ -513,7 +533,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1A73E8]"
+                        className="w-full rounded-xl border border-indigo-100 bg-white/85 px-4 py-2.5 text-[13px] text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
                       />
                       <button
                         type="button"
@@ -531,27 +551,12 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                   </div>
                 )}
 
-                {mode === 'signin' && (
-                  <div className="flex items-center justify-between pt-0.5 text-xs">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setAuthMethod(authMethod === 'otp' ? 'password' : 'otp')
-                      }
-                      className="text-[#1A73E8] hover:underline font-medium cursor-pointer flex items-center gap-1"
-                    >
-                      <KeyRound className="w-3.5 h-3.5" />
-                      <span>
-                        {authMethod === 'otp'
-                          ? 'Sign in with Password instead'
-                          : 'Sign in with OTP code'}
-                      </span>
-                    </button>
-
+                {mode === 'signin' && authMethod === 'password' && (
+                  <div className="flex justify-end pt-0.5">
                     <button
                       type="button"
                       onClick={handleForgotPasswordTrigger}
-                      className="text-slate-500 hover:text-[#0B57D0] hover:underline font-medium cursor-pointer"
+                      className="text-sm font-medium text-blue-600 transition hover:text-blue-800 hover:underline"
                     >
                       Forgot password?
                     </button>
@@ -561,7 +566,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                 <button
                   type="submit"
                   disabled={isLoading || isResolving || isInvalidDomain}
-                  className="w-full py-3 rounded-full bg-[#0B57D0] hover:bg-[#0842A0] text-white font-medium text-sm transition shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-blue-700 to-blue-600 py-3 text-[13px] font-semibold text-white shadow-md shadow-blue-600/15 transition-colors duration-200 hover:from-blue-800 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isLoading ? (
                     'Processing...'
@@ -589,9 +594,9 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
 
             {/* STEP 2: OTP */}
             {step === 'verify-otp' && (
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <form onSubmit={handleVerifyOtp} className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                  <label className="mb-1 block text-[11px] font-medium text-slate-700">
                     6-Digit Verification Code
                   </label>
                   <input
@@ -604,7 +609,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                     placeholder="123456"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-300 text-center tracking-[0.4em] font-mono text-xl focus:outline-none focus:ring-2 focus:ring-[#1A73E8]"
+                    className="w-full rounded-xl border border-indigo-100 bg-white/85 px-4 py-2.5 text-center font-mono text-lg tracking-[0.4em] text-slate-800 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
                   />
                 </div>
 
@@ -612,7 +617,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                   <span>Didn&apos;t receive code?</span>
                   <button
                     type="button"
-                    onClick={handleSubmitEmailOrPassword}
+                    onClick={handleResendOtp}
                     className="text-[#1A73E8] hover:underline font-semibold cursor-pointer"
                   >
                     Resend Code
@@ -622,7 +627,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                 <button
                   type="submit"
                   disabled={isLoading || otp.length < 6}
-                  className="w-full py-3 rounded-full bg-[#0B57D0] hover:bg-[#0842A0] text-white font-medium text-sm transition shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-blue-700 to-blue-600 py-3 text-[13px] font-semibold text-white shadow-md shadow-blue-600/15 transition-colors duration-200 hover:from-blue-800 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isLoading ? 'Verifying...' : 'Verify code'}
                 </button>
@@ -644,7 +649,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
 
             {/* STEP 3: Create password (first signup only) */}
             {step === 'set-password' && (
-              <form onSubmit={handleSetPassword} className="space-y-4">
+              <form onSubmit={handleSetPassword} className="space-y-3">
                 <div className="p-3 rounded-2xl bg-[#E8F0FE] border border-[#D2E3FC] text-xs text-[#0B57D0] flex items-center gap-2">
                   <Lock className="w-4 h-4 shrink-0" />
                   <span>
@@ -654,7 +659,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                  <label className="mb-1 block text-[11px] font-medium text-slate-700">
                     Create password
                   </label>
                   <div className="relative">
@@ -665,7 +670,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="At least 8 characters"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1A73E8]"
+                      className="w-full rounded-xl border border-indigo-100 bg-white/85 px-4 py-2.5 text-[13px] text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
                       autoFocus
                     />
                     <button
@@ -684,7 +689,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                  <label className="mb-1 block text-[11px] font-medium text-slate-700">
                     Confirm password
                   </label>
                   <input
@@ -694,7 +699,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter password"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#1A73E8]"
+                    className="w-full rounded-xl border border-indigo-100 bg-white/85 px-4 py-2.5 text-[13px] text-slate-800 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
                   />
                   <p className="text-[11px] text-slate-500 mt-1">
                     Next time you can use “Sign in with Password” or OTP.
@@ -708,7 +713,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                     password.length < 8 ||
                     password !== confirmPassword
                   }
-                  className="w-full py-3 rounded-full bg-[#0B57D0] hover:bg-[#0842A0] text-white font-medium text-sm transition shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-blue-700 to-blue-600 py-3 text-[13px] font-semibold text-white shadow-md shadow-blue-600/15 transition-colors duration-200 hover:from-blue-800 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isLoading
                     ? 'Saving...'
@@ -746,7 +751,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
           </div>
 
           {step === 'input' && (
-            <div className="pt-6 border-t border-slate-100 text-center text-xs text-slate-500">
+            <div className="border-t border-slate-100 pt-4 text-center text-xs text-slate-500">
               {mode === 'signin' ? (
                 <p>
                   Don&apos;t have an account?{' '}
@@ -770,6 +775,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                     type="button"
                     onClick={() => {
                       setMode('signin');
+                      setAuthMethod('password');
                       setStep('input');
                       resetMessages();
                     }}
@@ -783,7 +789,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
           )}
         </div>
       </div>
-    </div>
+    </AuthBackground>
   );
 }
 

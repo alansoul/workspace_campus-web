@@ -170,6 +170,31 @@ export function useWebRTCCall(currentUser?: { id?: string; fullName?: string; em
     [cleanupCall],
   );
 
+  // Helper to acquire media with automatic audio fallback if camera is locked
+  const acquireMediaStream = async (wantVideo: boolean): Promise<{ stream: MediaStream; videoAvailable: boolean }> => {
+    if (wantVideo) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+        });
+        return { stream, videoAvailable: true };
+      } catch (err: unknown) {
+        const error = err as Error;
+        if (error.name === 'NotReadableError' || error.name === 'TrackStartError' || error.name === 'AbortError') {
+          console.info('[Call] Webcam is in use by another window/app. Continuing with audio only.');
+        }
+      }
+    }
+
+    // Audio-only fallback
+    const audioStream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: false,
+    });
+    return { stream: audioStream, videoAvailable: false };
+  };
+
   // 1. Start Call (Caller)
   const startCall = useCallback(
     async (channelId: string, peerName: string, isVideo: boolean) => {
@@ -177,22 +202,14 @@ export function useWebRTCCall(currentUser?: { id?: string; fullName?: string; em
         setCallState('calling');
         setActiveCall({ channelId, peerName, isVideo });
 
-        let stream: MediaStream;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
-            video: isVideo ? { width: 1280, height: 720 } : false,
-          });
-        } catch {
-          // Fallback to audio only if camera is unavailable
-          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        }
+        const { stream, videoAvailable } = await acquireMediaStream(isVideo);
 
         localStreamRef.current = stream;
         setLocalStream(stream);
 
-        if (stream.getVideoTracks().length > 0) {
+        if (videoAvailable && stream.getVideoTracks().length > 0) {
           originalCameraTrackRef.current = stream.getVideoTracks()[0];
+          setIsVideoDisabled(false);
         } else {
           setIsVideoDisabled(true);
         }
@@ -200,7 +217,6 @@ export function useWebRTCCall(currentUser?: { id?: string; fullName?: string; em
         const pc = createPeerConnection(channelId);
         stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
-        // Always reserve a bidirectional video transceiver so either side can share screen/video anytime
         const hasVideoSender = pc.getSenders().some((s) => s.track?.kind === 'video');
         if (!hasVideoSender) {
           pc.addTransceiver('video', { direction: 'sendrecv' });
@@ -218,7 +234,7 @@ export function useWebRTCCall(currentUser?: { id?: string; fullName?: string; em
           offer,
           callerName: currentUser?.fullName || currentUser?.email?.split('@')[0] || 'Peer',
           callerId: currentUser?.id || 'anonymous',
-          isVideo,
+          isVideo: videoAvailable,
         });
       } catch (err) {
         console.error('Call initialization failed:', err);

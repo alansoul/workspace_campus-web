@@ -44,7 +44,7 @@ export function AcademicsSidebar({ activeTab, onSelectTab, profile }: SidebarPro
       <div>
         {/* Dynamic College Identity Header */}
         <div className="flex items-center gap-3.5 px-6 py-5 border-b border-slate-100">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-500 text-white flex items-center justify-center font-bold text-lg shadow-sm shadow-indigo-200 shrink-0">
+          <div className="w-10 h-10 rounded-2xl bg-linear-to-tr from-indigo-600 to-blue-500 text-white flex items-center justify-center font-bold text-lg shadow-sm shadow-indigo-200 shrink-0">
             {collegeInitial}
           </div>
           <div className="overflow-hidden">

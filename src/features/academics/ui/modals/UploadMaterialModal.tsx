@@ -1,40 +1,45 @@
 'use client';
 
 import React, { useState } from 'react';
+import type { SubjectItem, DriveFile } from '../../types/academics.types';
 
-type MaterialCategory = 'Lectures' | 'Notes' | 'Assignments' | 'Practicals';
-
-interface UploadModalProps {
+interface UploadMaterialModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUpload: (material: {
     title: string;
     subject: string;
-    category: MaterialCategory;
+    category: DriveFile['category'];
     size: string;
     fileUrl: string;
   }) => void;
-  subjects: { code: string; name: string }[];
+  subjects?: SubjectItem[];
 }
 
-export function UploadMaterialModal({ isOpen, onClose, onUpload, subjects }: UploadModalProps) {
+export function UploadMaterialModal({
+  isOpen,
+  onClose,
+  onUpload,
+  subjects = [],
+}: UploadMaterialModalProps) {
   const [title, setTitle] = useState('');
-  const [subject, setSubject] = useState(subjects[0]?.name || 'Data Structures');
-  const [category, setCategory] = useState<MaterialCategory>('Notes');
-  const [selectedFileName, setSelectedFileName] = useState('');
-  const [fileSize, setFileSize] = useState('2.4 MB');
+  const [subject, setSubject] = useState(subjects[0]?.name || 'Programming with C');
+  const [category, setCategory] = useState<DriveFile['category']>('Lectures');
+  const [fileUrl, setFileUrl] = useState('');
+  const [fileName, setFileName] = useState('');
+  const [fileSize, setFileSize] = useState('2.1 MB');
 
   if (!isOpen) return null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setSelectedFileName(file.name);
-      const sizeInMb = (file.size / (1024 * 1024)).toFixed(1);
-      setFileSize(`${sizeInMb} MB`);
-      if (!title) {
-        setTitle(file.name.replace(/\.[^/.]+$/, ''));
-      }
+      setFileName(file.name);
+      setTitle(file.name.replace(/\.[^/.]+$/, ''));
+      setFileSize(`${(file.size / (1024 * 1024)).toFixed(1)} MB`);
+      // Create local blob URL for immediate instant download/viewing
+      const localBlob = URL.createObjectURL(file);
+      setFileUrl(localBlob);
     }
   };
 
@@ -47,113 +52,136 @@ export function UploadMaterialModal({ isOpen, onClose, onUpload, subjects }: Upl
       subject,
       category,
       size: fileSize,
-      fileUrl: '#',
+      fileUrl: fileUrl.trim(),
     });
 
-    onClose();
     setTitle('');
-    setSelectedFileName('');
+    setFileName('');
+    setFileUrl('');
+    onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-      <div className="bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-150">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in duration-150">
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
           <div>
             <h3 className="font-bold text-slate-900 text-lg">Upload Lecture Material</h3>
-            <p className="text-xs text-slate-500">Shared with all students enrolled in your department.</p>
+            <p className="text-xs text-slate-500">
+              Share lecture slides, handwritten notes, or past question papers.
+            </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-full text-slate-400 hover:text-slate-600"
+            className="text-slate-400 hover:text-slate-600 text-xl font-bold cursor-pointer"
           >
             ✕
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Document Title</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Select File</label>
+            <div className="border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-xl p-4 text-center cursor-pointer transition-colors relative bg-slate-50/50">
+              <input
+                type="file"
+                accept=".pdf,.ppt,.pptx,.doc,.docx"
+                onChange={handleFileSelect}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              />
+              <div className="space-y-1">
+                <span className="text-2xl">📄</span>
+                <p className="text-xs font-semibold text-slate-700">
+                  {fileName ? fileName : 'Click to browse or drop file here'}
+                </p>
+                <p className="text-[11px] text-slate-400">PDF, PPTX, or DOC up to 50MB</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">
+              Document / Slide Title
+            </label>
             <input
               type="text"
               required
-              placeholder="e.g. Unit 3 Trees & Graphs Handwritten Notes"
+              placeholder="e.g. Unit 3 — Binary Trees and Heap Structures"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full text-sm px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-hidden focus:border-indigo-500 focus:bg-white"
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Subject</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Course / Subject</label>
               <select
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="w-full text-xs px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-hidden"
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
               >
-                {subjects.map((s) => (
-                  <option key={s.code} value={s.name}>
-                    {s.code} — {s.name}
-                  </option>
-                ))}
+                {subjects.length > 0 ? (
+                  subjects.map((s) => (
+                    <option key={s.id} value={s.name}>
+                      {s.name}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="Programming with C">Programming with C</option>
+                    <option value="Linear Algebra">Linear Algebra</option>
+                    <option value="Calculus">Calculus</option>
+                    <option value="Digital Electronics">Digital Electronics</option>
+                    <option value="IT Workshop">IT Workshop</option>
+                  </>
+                )}
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Category</label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value as MaterialCategory)}
-                className="w-full text-xs px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-hidden"
+                onChange={(e) => setCategory(e.target.value as DriveFile['category'])}
+                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
               >
+                <option value="Lectures">Lectures</option>
                 <option value="Notes">Notes</option>
-                <option value="Lectures">Lectures Slides</option>
-                <option value="Assignments">Assignment Solution</option>
-                <option value="Practicals">Practical Manual</option>
+                <option value="Assignments">Assignments</option>
+                <option value="Practicals">Practicals</option>
+                <option value="Question Papers">Question Papers</option>
               </select>
             </div>
           </div>
 
-          {/* File Picker */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">File (PDF, PPTX, DOCX)</label>
-            <div className="border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl p-4 text-center cursor-pointer transition">
-              <input
-                type="file"
-                accept=".pdf,.pptx,.ppt,.docx,.doc"
-                onChange={handleFileChange}
-                className="hidden"
-                id="file-upload"
-              />
-              <label htmlFor="file-upload" className="cursor-pointer">
-                {selectedFileName ? (
-                  <span className="text-xs font-medium text-indigo-600 truncate block">
-                    📄 {selectedFileName} ({fileSize})
-                  </span>
-                ) : (
-                  <span className="text-xs text-slate-500">
-                    Click to select a file from your device (Max 50MB)
-                  </span>
-                )}
-              </label>
-            </div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">
+              External Document Link (Optional)
+            </label>
+            <input
+              type="url"
+              placeholder="e.g. Google Drive link or leave blank"
+              value={fileUrl}
+              onChange={(e) => setFileUrl(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+            />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+          <div className="pt-2 flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+              className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs"
+              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-colors cursor-pointer"
             >
-              Publish to Drive
+              Upload to Drive
             </button>
           </div>
         </form>

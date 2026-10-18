@@ -1,5 +1,14 @@
+// campus-web/src/features/academics/services/academics.service.ts
+
 import { apiFetch } from '@/lib/api';
-import type { DriveFile } from '../types/academics.types';
+import type {
+  DriveFile,
+  CampusNotice,
+  CampusEvent,
+  AssignmentItem,
+  AttendanceSubject,
+  ExamItem,
+} from '../types/academics.types';
 
 export interface SyncedCampusEmailItem {
   category: 'NOTICE' | 'EVENT' | 'EXAM' | 'TASK';
@@ -38,74 +47,242 @@ export interface FullInboxScanResponse {
   updates: ScannedInboxUpdate[];
 }
 
+// Backend Response Interfaces for Drive Notes
+interface BackendNoteAuthor {
+  fullName?: string;
+}
+
+interface BackendNoteItem {
+  id: string;
+  title: string;
+  subject?: string;
+  category?: string;
+  fileSize?: string;
+  fileUrl?: string;
+  isStarred?: boolean;
+  createdAt?: string;
+  author?: BackendNoteAuthor;
+}
+
+interface BackendNoteListResponse {
+  data?: BackendNoteItem[];
+}
+
 export const academicsService = {
-  /**
-   * Fetches notes / drive materials from campus-api with fallback
-   */
-  async getNotes(branch = 'CSE', semester = 3): Promise<DriveFile[]> {
+  // 1. Campus Notices & WhatsApp Ingestion
+  async getNotices(): Promise<CampusNotice[]> {
     try {
-      const res = await apiFetch<{ data: DriveFile[] }>(
-        `/universities/notes?branch=${branch}&semester=${semester}`,
+      const res = await apiFetch<CampusNotice[] | { data: CampusNotice[] }>(
+        '/universities/notices',
         { method: 'GET' },
       );
-      return res.data || [];
+      if (Array.isArray(res)) return res;
+      if (res && 'data' in res && Array.isArray(res.data)) return res.data;
+      return [];
     } catch {
       return [];
     }
   },
 
-  /**
-   * Dispatches new note metadata to campus-api
-   */
-  async uploadNoteMetadata(payload: {
+  async createNotice(payload: {
     title: string;
-    subject: string;
-    fileUrl: string;
-    branch: string;
-    semester: number;
-  }) {
-    return apiFetch('/universities/notes', {
+    category?: string;
+    summary: string;
+    isImportant?: boolean;
+    attachmentName?: string;
+  }): Promise<CampusNotice> {
+    return apiFetch<CampusNotice>('/universities/notices', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
 
-  /**
-   * Toggle event RSVP
-   */
-  async toggleEventRSVP(eventId: string, interested: boolean) {
+  // 2. Attendance Tracking
+  async getAttendance(): Promise<AttendanceSubject[]> {
     try {
-      return await apiFetch(`/universities/events/${eventId}/interest`, {
+      const res = await apiFetch<AttendanceSubject[] | { data: AttendanceSubject[] }>(
+        '/universities/attendance',
+        { method: 'GET' },
+      );
+      if (Array.isArray(res)) return res;
+      if (res && 'data' in res && Array.isArray(res.data)) return res.data;
+      return [];
+    } catch {
+      return [];
+    }
+  },
+
+  async logAttendance(
+    subjectName: string,
+    attended: boolean,
+  ): Promise<AttendanceSubject> {
+    return apiFetch<AttendanceSubject>('/universities/attendance/log', {
+      method: 'POST',
+      body: JSON.stringify({ subjectName, attended }),
+    });
+  },
+
+  // 3. Coursework & Assignments
+  async getAssignments(): Promise<AssignmentItem[]> {
+    try {
+      const res = await apiFetch<AssignmentItem[] | { data: AssignmentItem[] }>(
+        '/universities/assignments',
+        { method: 'GET' },
+      );
+      if (Array.isArray(res)) return res;
+      if (res && 'data' in res && Array.isArray(res.data)) return res.data;
+      return [];
+    } catch {
+      return [];
+    }
+  },
+
+  async updateAssignmentStatus(id: string, status: string): Promise<void> {
+    await apiFetch(`/universities/assignments/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  // 4. Campus Events
+  async getEvents(): Promise<CampusEvent[]> {
+    try {
+      const res = await apiFetch<CampusEvent[] | { data: CampusEvent[] }>(
+        '/universities/events',
+        { method: 'GET' },
+      );
+      if (Array.isArray(res)) return res;
+      if (res && 'data' in res && Array.isArray(res.data)) return res.data;
+      return [];
+    } catch {
+      return [];
+    }
+  },
+
+  async createEvent(payload: {
+    title: string;
+    category?: string;
+    description: string;
+    dateTimeStr: string;
+    venue: string;
+    organizer?: string;
+    organizerContact?: string;
+  }): Promise<CampusEvent> {
+    return apiFetch<CampusEvent>('/universities/events', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async toggleEventRSVP(eventId: string, interested: boolean): Promise<CampusEvent | null> {
+    try {
+      return await apiFetch<CampusEvent>(`/universities/events/${eventId}/interest`, {
         method: 'POST',
         body: JSON.stringify({ interested }),
       });
     } catch {
-      return { success: true };
+      return null;
     }
   },
 
-  /**
-   * Submit institutional feedback
-   */
-  async submitFeedback(feedback: string) {
-    return apiFetch('/universities/feedback', {
+  // 5. Exam Schedules
+  async getExams(): Promise<ExamItem[]> {
+    try {
+      const res = await apiFetch<ExamItem[] | { data: ExamItem[] }>(
+        '/universities/exams',
+        { method: 'GET' },
+      );
+      if (Array.isArray(res)) return res;
+      if (res && 'data' in res && Array.isArray(res.data)) return res.data;
+      return [];
+    } catch {
+      return [];
+    }
+  },
+
+  // 6. Drive & Lecture Materials (Strongly Typed, No Any)
+  async getNotes(branch = 'CSE', semester = 1): Promise<DriveFile[]> {
+    try {
+      const res = await apiFetch<BackendNoteItem[] | BackendNoteListResponse>(
+        `/universities/notes?branch=${branch}&semester=${semester}`,
+        { method: 'GET' },
+      );
+
+      const rawItems: BackendNoteItem[] = Array.isArray(res)
+        ? res
+        : res && 'data' in res && Array.isArray(res.data)
+          ? res.data
+          : [];
+
+      return rawItems.map((note) => ({
+        id: note.id,
+        name: note.title.endsWith('.pdf') ? note.title : `${note.title}.pdf`,
+        subject: note.subject || 'General',
+        category: (note.category as DriveFile['category']) || 'Notes',
+        size: note.fileSize || '2.4 MB',
+        uploadDate: note.createdAt
+          ? new Date(note.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })
+          : 'Recently',
+        author: note.author?.fullName || 'Faculty In-Charge',
+        isStarred: Boolean(note.isStarred),
+        fileUrl: note.fileUrl || '#',
+      }));
+    } catch {
+      return [];
+    }
+  },
+
+  async uploadNoteMetadata(payload: {
+    title: string;
+    subject: string;
+    fileUrl: string;
+    category?: string;
+    branch?: string;
+    semester?: number;
+  }): Promise<DriveFile | null> {
+    try {
+      const saved = await apiFetch<BackendNoteItem>('/universities/notes', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: payload.title,
+          subject: payload.subject,
+          fileUrl: payload.fileUrl,
+          branch: payload.branch || 'CSE',
+          semester: Number(payload.semester) || 1,
+        }),
+      });
+
+      return {
+        id: saved.id,
+        name: saved.title.endsWith('.pdf') ? saved.title : `${saved.title}.pdf`,
+        subject: saved.subject || payload.subject,
+        category: (payload.category as DriveFile['category']) || 'Notes',
+        size: saved.fileSize || '1.8 MB',
+        uploadDate: 'Just now',
+        author: saved.author?.fullName || 'You',
+        isStarred: Boolean(saved.isStarred),
+        fileUrl: saved.fileUrl || payload.fileUrl,
+      };
+    } catch {
+      return null;
+    }
+  },
+
+  // 7. Feedback
+  async submitFeedback(feedback: string): Promise<{ success: boolean; message?: string }> {
+    return apiFetch<{ success: boolean; message?: string }>('/universities/feedback', {
       method: 'POST',
       body: JSON.stringify({ feedback }),
     });
   },
 
-  /**
-   * Gets Google OAuth consent screen URL
-   */
+  // 8. Gmail Sync & Integration Status
   async getGmailConnectUrl(): Promise<{ url: string }> {
     return apiFetch<{ url: string }>('/universities/auth/google-gmail/connect-url', {
       method: 'GET',
     });
   },
 
-  /**
-   * Checks if current user has an active Gmail token stored in database
-   */
   async getGmailStatus(): Promise<{ connected: boolean; email?: string; connectedAt?: string }> {
     try {
       return await apiFetch<{ connected: boolean; email?: string; connectedAt?: string }>(
@@ -117,13 +294,18 @@ export const academicsService = {
     }
   },
 
-  /**
-   * Triggers deep inbox scan, full Base64 decoding, and Gemini AI multi-entity extraction
-   */
   async runFullInboxScan(): Promise<FullInboxScanResponse> {
-    return apiFetch<FullInboxScanResponse>('/universities/email-sync/full-scan', {
-      method: 'POST',
-      body: JSON.stringify({}),
-    });
+    try {
+      return await apiFetch<FullInboxScanResponse>('/universities/email-sync/run', {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+    } catch {
+      return {
+        scannedCount: 0,
+        unreadCount: 0,
+        updates: [],
+      };
+    }
   },
 };

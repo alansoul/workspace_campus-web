@@ -1,3 +1,5 @@
+// campus-web/src/features/academics/types/academics.types.ts
+
 export type AcademicTab =
   | 'dashboard'
   | 'timetable'
@@ -15,7 +17,7 @@ export type AcademicTab =
   | 'profile'
   | 'plugins';
 
-  export interface McpConnector {
+export interface McpConnector {
   id: string;
   name: string;
   icon: string;
@@ -49,8 +51,6 @@ export type EventCategory =
 export type AssignmentStatus = 'All' | 'Not Started' | 'In Progress' | 'Submitted' | 'Overdue';
 export type PriorityLevel = 'High' | 'Medium' | 'Low';
 export type ClassType = 'Theory' | 'Practical' | 'Tutorial';
-
-// Replace StudentProfile in src/features/academics/types/academics.types.ts:
 
 export interface StudentProfile {
   id: string;
@@ -180,7 +180,7 @@ export interface AttendanceSubject {
 export interface CampusNotice {
   id: string;
   title: string;
-  category: 'Examination' | 'Administration' | 'Clubs' | 'Academic' | 'Hostel';
+  category: 'Examination' | 'Administration' | 'Clubs' | 'Academic' | 'Hostel' | 'Circular' | 'General';
   dateStr: string;
   summary: string;
   attachmentName?: string;
@@ -188,15 +188,25 @@ export interface CampusNotice {
   isUnread?: boolean;
 }
 
+export interface EventAttendee {
+  id: string;
+  fullName: string;
+  email: string;
+  registeredAt: string;
+}
+
 export interface CampusEvent {
   id: string;
   title: string;
   category: EventCategory;
-  timingBadge: string;
+  timingBadge?: string;
   description: string;
   dateTimeStr: string;
   venue: string;
   isInterested: boolean;
+  organizer?: string;
+  organizerContact?: string;
+  attendees?: EventAttendee[];
 }
 
 export interface AcademicTask {
@@ -224,8 +234,6 @@ export interface LostItem {
   timeAgo: string;
   status: 'Found' | 'Lost';
 }
-
-// Add to src/features/academics/types/academics.types.ts:
 
 export type GeminiModelId =
   | '3.5-flash-lite'

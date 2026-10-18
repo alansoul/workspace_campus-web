@@ -3,22 +3,24 @@
 import React, { useState } from 'react';
 import { useAuthSession } from '@/features/auth/hooks/useAuthSession';
 import { useChat } from '../hooks/useChat';
-import { useWebRTCCall } from '../hooks/useWebRTCCall';
 import { ChatSidebar } from './ChatSidebar';
 import { ChatFeed } from './ChatFeed';
 import { ChatRoster } from './ChatRoster';
-import { IncomingCallModal } from './call/IncomingCallModal';
-import { ActiveCallOverlay } from './call/ActiveCallOverlay';
+import { useCall } from '../context/CallContext';
 import { Mail, AlertCircle, Loader2 } from 'lucide-react';
+
+type ChatTheme = 'light' | 'dark';
 
 export function ChatApp() {
   const auth = useAuthSession() as {
     user?: { fullName?: string; email?: string; id?: string };
-    session?: { user?: { fullName?: string; email?: string; id?: string } };
+    session?: {
+      user?: { fullName?: string; email?: string; id?: string };
+    };
   };
+
   const activeUser = auth?.user || auth?.session?.user;
 
-  // 1. Chat, Channels, and Direct Messaging State
   const {
     channels,
     directChats,
@@ -34,37 +36,26 @@ export function ChatApp() {
     addFriendByEmail,
   } = useChat(activeUser);
 
-  // 2. Dedicated WebRTC Audio / Video / Screen Share Call State
-  const {
-    callState,
-    incomingCall,
-    activeCall,
-    localStream,
-    remoteStream,
-    hasRemoteVideo,
-    isAudioMuted,
-    isVideoDisabled,
-    isScreenSharing,
-    switchCamera,
-    startCall,
-    acceptCall,
-    rejectCall,
-    endCall,
-    toggleAudio,
-    toggleVideo,
-    toggleScreenShare,
-  } = useWebRTCCall(activeUser);
+  // Consume the global workspace call system
+  const { activeLiveKitRoom, startCall, endCall } = useCall();
 
+  const [theme, setTheme] = useState<ChatTheme>('light');
   const [addFriendOpen, setAddFriendOpen] = useState(false);
   const [friendEmailInput, setFriendEmailInput] = useState('');
   const [friendError, setFriendError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const userName =
+    activeUser?.fullName ||
+    activeUser?.email?.split('@')[0] ||
+    'Campus User';
+
   const getInitials = (name?: string) => {
     if (!name) return 'U';
     return name
-      .split(' ')
-      .map((n) => n[0])
+      .trim()
+      .split(/\s+/)
+      .map((part) => part[0])
       .slice(0, 2)
       .join('')
       .toUpperCase();
@@ -72,37 +63,57 @@ export function ChatApp() {
 
   const handleAddFriendSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!friendEmailInput.trim()) return;
+    const email = friendEmailInput.trim();
+    if (!email || isSubmitting) return;
 
     setFriendError(null);
     setIsSubmitting(true);
 
-    const result = await addFriendByEmail(friendEmailInput);
-    setIsSubmitting(false);
-
-    if (result.success) {
-      setFriendEmailInput('');
-      setAddFriendOpen(false);
-    } else {
-      setFriendError(result.error || 'Failed to find friend');
+    try {
+      const result = await addFriendByEmail(email);
+      if (result.success) {
+        setFriendEmailInput('');
+        setAddFriendOpen(false);
+      } else {
+        setFriendError(result.error || 'Failed to find friend.');
+      }
+    } catch (error) {
+      console.error('Failed to add friend:', error);
+      setFriendError('Something went wrong. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const userName =
-    activeUser?.fullName || activeUser?.email?.split('@')[0] || 'Campus User';
+  const openAddFriend = () => {
+    setFriendError(null);
+    setAddFriendOpen(true);
+  };
+
+  const closeAddFriend = () => {
+    if (isSubmitting) return;
+    setAddFriendOpen(false);
+    setFriendError(null);
+  };
+
+  const toggleTheme = () => {
+    setTheme((current) => (current === 'light' ? 'dark' : 'light'));
+  };
 
   return (
-    <div className="flex h-screen w-full select-none overflow-hidden bg-[#0a0d14] text-[#cfd4dc] font-sans antialiased relative">
+    <div
+      data-chat-theme={theme}
+      className={`chat-workspace relative flex h-[calc(100dvh-3.5rem)] min-h-0 w-full select-none overflow-hidden font-sans antialiased ${
+        theme === 'dark' ? 'dark' : ''
+      }`}
+    >
       <ChatSidebar
         channels={channels}
         directChats={directChats}
         currentChannel={currentChannel}
         onlineMembers={onlineMembers}
         onSelectChannel={selectChannel}
-        onOpenAddFriend={() => {
-          setFriendError(null);
-          setAddFriendOpen(true);
-        }}
+        onOpenAddFriend={openAddFriend}
         isLoadingChannels={isLoadingChannels}
         isConnected={isConnected}
         userName={userName}
@@ -118,79 +129,78 @@ export function ChatApp() {
         onSendMessage={sendMessage}
         onUploadFile={uploadFile}
         onStartCall={(isVideo) => {
-          if (currentChannel) {
-            const peerName = currentChannel.friend?.name || currentChannel.name;
-            startCall(currentChannel.id, peerName, isVideo);
-          }
+          if (!currentChannel) return;
+          const targetUserId = currentChannel.isDirect ? currentChannel.friend?.id : undefined;
+          startCall(currentChannel.id, isVideo, targetUserId);
         }}
         getInitials={getInitials}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       <ChatRoster
         onlineMembers={onlineMembers}
-        isCalling={callState === 'connected'}
+        isCalling={Boolean(activeLiveKitRoom)}
         onEndCall={endCall}
-        localStream={localStream}
         getInitials={getInitials}
       />
 
-      {/* 1. Incoming Call Alert Modal */}
-      {callState === 'incoming' && incomingCall && (
-        <IncomingCallModal
-          incomingCall={incomingCall}
-          onAccept={acceptCall}
-          onReject={rejectCall}
-          getInitials={getInitials}
-        />
-      )}
 
-      {/* 2. Active Call Room (Audio, Video, Screen Share) */}
-      {(callState === 'calling' || callState === 'connected') && activeCall && (
-        <ActiveCallOverlay
-          activeCall={activeCall}
-          callState={callState}
-          localStream={localStream}
-          remoteStream={remoteStream}
-          hasRemoteVideo={hasRemoteVideo}
-          isAudioMuted={isAudioMuted}
-          isVideoDisabled={isVideoDisabled}
-          isScreenSharing={isScreenSharing}
-          onToggleAudio={toggleAudio}
-          onToggleVideo={toggleVideo}
-          onToggleScreenShare={toggleScreenShare}
-          onSwitchCamera={switchCamera}
-          onEndCall={endCall}
-          getInitials={getInitials}
-        />
-      )}
-
-      {/* 3. Add Friend by Email Modal */}
+      {/* Add Friend Dialog */}
       {addFriendOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-2xl border border-[#22293d] bg-[#121624] p-5 shadow-2xl">
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-linear-to-tr from-indigo-500 to-purple-600 text-white">
-                <Mail className="h-4 w-4" />
+        <div
+          className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeAddFriend();
+          }}
+        >
+          <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-5 text-slate-800 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+            <div className="mb-2 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/20">
+                <Mail className="h-5 w-5" />
               </div>
-              <h3 className="text-base font-bold text-white">Add Friend by Email</h3>
+
+              <div>
+                <h3 className="text-base font-bold">Add friend by email</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Start a direct conversation
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-[#707994]">
-              Enter the campus email your friend used to log in. Once added, you can start messaging immediately.
+
+            <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Enter the campus email your friend uses to log in. Once added, you can start messaging them.
             </p>
 
-            <form onSubmit={handleAddFriendSubmit} className="mt-4 space-y-3">
+            <form onSubmit={handleAddFriendSubmit} className="mt-5 space-y-3">
+              <label
+                htmlFor="friend-email"
+                className="block text-xs font-semibold text-slate-700 dark:text-slate-200"
+              >
+                Campus email
+              </label>
+
               <input
+                id="friend-email"
                 type="email"
+                autoComplete="email"
                 placeholder="friend@campus.edu.in"
                 value={friendEmailInput}
-                onChange={(e) => setFriendEmailInput(e.target.value)}
+                onChange={(e) => {
+                  setFriendEmailInput(e.target.value);
+                  if (friendError) setFriendError(null);
+                }}
                 required
-                className="w-full rounded-xl border border-[#2b334a] bg-[#181d2e] px-3.5 py-2.5 text-xs text-white placeholder-[#5d6682] focus:border-indigo-500 focus:outline-none"
+                disabled={isSubmitting}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
               />
 
               {friendError && (
-                <div className="flex items-center gap-1.5 text-xs text-rose-400">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <div
+                  role="alert"
+                  className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300"
+                >
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                   <span>{friendError}</span>
                 </div>
               )}
@@ -198,18 +208,20 @@ export function ChatApp() {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setAddFriendOpen(false)}
-                  className="rounded-xl px-3 py-1.5 text-xs text-[#8e96af] hover:text-white"
+                  onClick={closeAddFriend}
+                  disabled={isSubmitting}
+                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   Cancel
                 </button>
+
                 <button
                   type="submit"
                   disabled={isSubmitting || !friendEmailInput.trim()}
-                  className="flex items-center gap-1.5 rounded-xl bg-linear-to-r from-indigo-500 to-purple-600 px-4 py-1.5 text-xs font-semibold text-white shadow-md hover:opacity-95 disabled:opacity-40"
+                  className="flex items-center gap-2 rounded-xl bg-linear-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/20 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  <span>Start Chat</span>
+                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  <span>{isSubmitting ? 'Starting…' : 'Start chat'}</span>
                 </button>
               </div>
             </form>

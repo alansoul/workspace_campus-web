@@ -33,26 +33,22 @@ export function proxy(request: NextRequest) {
   const userRole = request.cookies.get('user_role')?.value;
   const { pathname, search } = request.nextUrl;
 
-  // 1. Verify token expiration
   const payload = parseJwtPayload(token);
-  // An account is truly INSTITUTIONAL if universityId exists in the token or cookie is set
   const isInstitutional =
     Boolean(payload?.universityId && payload.universityId.trim() !== '') ||
     cookieAccountType === 'INSTITUTIONAL';
 
   // 1. Authenticated users visiting login/register are redirected to dashboard
-  // Inside campus-web/src/proxy.ts:
-if ((pathname === '/login' || pathname === '/register') && token) {
-  const redirectParam = request.nextUrl.searchParams.get('redirect');
-  const safeTarget = getSafeRedirectUrl(redirectParam);
+  if ((pathname === '/login' || pathname === '/register') && token) {
+    const redirectParam = request.nextUrl.searchParams.get('redirect');
+    const safeTarget = getSafeRedirectUrl(redirectParam);
 
-  // Prevent circular redirect loop back to the same showcase page
-  if (safeTarget === '/academics' || safeTarget === '/chat' || safeTarget === '/freelance') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    if (safeTarget === '/academics' || safeTarget === '/chat' || safeTarget === '/freelance') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    return NextResponse.redirect(new URL(safeTarget, request.url));
   }
-
-  return NextResponse.redirect(new URL(safeTarget, request.url));
-}
 
   // 2. Private routes: ONLY /dashboard and /admin strictly require a token
   const isStrictlyPrivate =
@@ -64,9 +60,8 @@ if ((pathname === '/login' || pathname === '/register') && token) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // 3. 🔒 STRICT ACADEMICS GATE:
+  // 3. STRICT ACADEMICS GATE:
   // Personal accounts (INDIVIDUAL) CANNOT enter /academics.
-  // They are redirected to the dashboard with the link-campus modal prompt!
   const isAcademicsRoute =
     pathname === '/academics' || pathname.startsWith('/academics/');
 
@@ -98,7 +93,9 @@ export const config = {
     '/admin/:path*',
     '/academics',
     '/academics/:path*',
+    '/freelance',
     '/freelance/:path*',
+    '/chat',
     '/chat/:path*',
     '/login',
     '/register',

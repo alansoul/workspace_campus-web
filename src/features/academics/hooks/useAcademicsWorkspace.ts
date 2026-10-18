@@ -1,173 +1,355 @@
+// campus-web/src/features/academics/hooks/useAcademicsWorkspace.ts
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAuthSession } from '@/features/auth/hooks/useAuthSession';
-import { getFormattedToday, getLiveGreeting, getDayName } from '../utils/academics-date.utils';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { getFormattedToday, getLiveGreeting } from '../utils/academics-date.utils';
 import type {
   AcademicTab,
   EventCategory,
-  AssignmentStatus,
-  StudentProfile,
   CampusEvent,
-  AcademicTask,
-  DriveFile,
-  PracticalExperiment,
-  DayTimetable,
-  SubjectItem,
+  EventAttendee,
   McpConnector,
   CampusNotice,
+  AcademicTask,
 } from '../types/academics.types';
 import {
-  INITIAL_STUDENT_PROFILE,
   INITIAL_EVENTS,
-  INITIAL_FILES,
-  INITIAL_ASSIGNMENTS,
-  INITIAL_PRACTICALS,
-  INITIAL_EXAMS,
-  INITIAL_ATTENDANCE,
-  INITIAL_NOTICES,
-  INITIAL_TASKS,
+  INITIAL_MCP_CONNECTORS,
   FACULTY_DIRECTORY,
   LOST_ITEMS,
-  CAMPUS_TIMETABLES_REGISTRY,
-  INITIAL_MCP_CONNECTORS,
 } from '../data/academics.data';
 import { academicsService } from '../services/academics.service';
+import { useAcademicsProfile } from './useAcademicsProfile';
+import { useAcademicsCoursework } from './useAcademicsCoursework';
 
+// Exported type for timetable modals and view routing
 export type BranchCode = 'CSE' | 'ECE' | 'DSAI' | 'MECH';
 
-interface CustomTimetablePayload {
-  institution: string;
-  branch: BranchCode;
-  semester: number;
-  roomNo: string;
-  effectiveDate: string;
-  timetable: DayTimetable[];
-  subjects: SubjectItem[];
-}
-
 export function useAcademicsWorkspace() {
-  const { user } = useAuthSession();
   const [activeTab, setActiveTab] = useState<AcademicTab>('timetable');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 1. Dynamic Branch & Semester
-  const [selectedBranch, setSelectedBranch] = useState<BranchCode>('CSE');
-  const [selectedSemester, setSelectedSemester] = useState<number>(1);
+  // 1. Profile, Branch, Timetable Engine
+  const profileModule = useAcademicsProfile();
+  const currentUserId = profileModule.profile.id;
+  const currentUserEmail = profileModule.profile.email?.toLowerCase();
+  const currentUserName = profileModule.profile.name;
 
-  // 2. Designated Master Admins & Role Detection
-  const DESIGNATED_ADMIN_EMAILS = [
-    'alansoul1796@gmail.com',
-    'admin@iiitnr.edu.in',
-  ];
+  // 2. Coursework, Attendance, Exams, Tasks, Drive, WhatsApp Engine
+  const courseworkModule = useAcademicsCoursework(currentUserName);
+  const { setNotices, setTasks } = courseworkModule;
 
-  const isAdmin = Boolean(
-    user?.role === 'ADMIN' ||
-    (user?.email && DESIGNATED_ADMIN_EMAILS.includes(user.email.toLowerCase()))
-  );
+  // 3. Global Keyboard Shortcut for ⌘K / Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const searchInput = document.querySelector<HTMLInputElement>(
+          'input[type="search"], input[placeholder*="Search"]',
+        );
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
-  // 3. Custom Uploaded Timetable Override
-  const [customTimetable, setCustomTimetable] = useState<CustomTimetablePayload | null>(null);
-
-  // 4. Derived State: Active schedule
-  const activeKey = `${selectedBranch}_${selectedSemester}`;
-  const defaultRegistry = CAMPUS_TIMETABLES_REGISTRY[activeKey] || CAMPUS_TIMETABLES_REGISTRY.CSE_1;
-
-  const activeConfig =
-    customTimetable &&
-    customTimetable.branch === selectedBranch &&
-    customTimetable.semester === selectedSemester
-      ? customTimetable
-      : defaultRegistry;
-
-  const institutionName = activeConfig.institution;
-  const roomNo = activeConfig.roomNo;
-  const effectiveDate = activeConfig.effectiveDate;
-  const timetableMatrix = activeConfig.timetable;
-  const subjects = activeConfig.subjects;
-
-  // 5. Stateful & Editable Student Profile with LocalStorage Cache
-  const [profileState, setProfileState] = useState<StudentProfile>(() => {
+  // 4. Campus Events State & Backend Sync
+  const [events, setEvents] = useState<CampusEvent[]>(() => {
     if (typeof window !== 'undefined') {
-      const cached = localStorage.getItem('user_profile_data');
-      if (cached) {
+      const saved = localStorage.getItem('campus_events');
+      if (saved) {
         try {
-          return JSON.parse(cached);
+          return JSON.parse(saved);
         } catch {}
       }
     }
-    const resolvedName = user?.name || (isAdmin ? 'Alan Soul' : 'Rohan Singh Bhandari');
-    return {
-      ...INITIAL_STUDENT_PROFILE,
-      name: resolvedName,
-      avatarText: resolvedName
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase(),
-      email: user?.email || (isAdmin ? 'alansoul1796@gmail.com' : 'rohan26100@iiitnr.edu.in'),
-      collegeName: institutionName,
-      semester: selectedSemester,
-      branch: `B.Tech · ${selectedBranch}`,
-      bio: 'Software engineer & student researcher. Exploring systems, distributed computing and compilers.',
-      phone: '+91 98765 43210',
-      batch: '2026 – 2030',
-      cgpa: '8.92',
-      skills: ['C / C++', 'Verilog', 'TypeScript', 'Linux', 'Python', 'Data Structures'],
-      githubUrl: 'https://github.com/alansoul',
-      linkedinUrl: 'https://linkedin.com/in/alansoul',
-    };
+    return INITIAL_EVENTS;
   });
 
-  const profile: StudentProfile = {
-    ...profileState,
-    collegeName: institutionName,
-    semester: selectedSemester,
-    branch: `B.Tech · ${selectedBranch}`,
-  };
+  const [selectedEventCategory, setSelectedEventCategory] = useState<EventCategory>('All');
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
 
-  const updateProfile = (updatedData: Partial<StudentProfile>) => {
-    setProfileState((prev) => {
-      const next = {
-        ...prev,
-        ...updatedData,
-        avatarText: updatedData.name
-          ? updatedData.name
-              .split(' ')
-              .map((n) => n[0])
-              .join('')
-              .slice(0, 2)
-              .toUpperCase()
-          : prev.avatarText,
-      };
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('user_profile_data', JSON.stringify(next));
-      }
-      return next;
-    });
+  useEffect(() => {
+    let isMounted = true;
+    async function loadEvents() {
+      try {
+        const liveEvents = await academicsService.getEvents();
+        if (isMounted && liveEvents && liveEvents.length > 0) {
+          const normalized: CampusEvent[] = liveEvents.map((evt) => {
+            const attendeesList: EventAttendee[] = Array.isArray(evt.attendees) ? evt.attendees : [];
+            const isUserRegistered = attendeesList.some(
+              (a) =>
+                (currentUserId && a.id === currentUserId) ||
+                (currentUserEmail && a.email?.toLowerCase() === currentUserEmail),
+            );
 
-    if (updatedData.branch) {
-      const cleanBranch = updatedData.branch.replace('B.Tech · ', '') as BranchCode;
-      if (['CSE', 'ECE', 'DSAI', 'MECH'].includes(cleanBranch)) {
-        setSelectedBranch(cleanBranch);
-      }
+            return {
+              ...evt,
+              attendees: attendeesList,
+              isInterested: isUserRegistered,
+            };
+          });
+
+          setEvents((prev) => {
+            const fetchedIds = new Set(normalized.map((e) => e.id));
+            const existingSyncedOrCustom = prev.filter((e) => !fetchedIds.has(e.id));
+            const merged = [...normalized, ...existingSyncedOrCustom];
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('campus_events', JSON.stringify(merged));
+            }
+            return merged;
+          });
+        }
+      } catch {}
     }
-    if (updatedData.semester && typeof updatedData.semester === 'number') {
-      setSelectedSemester(updatedData.semester);
-    }
-  };
-
-  const handleAvatarUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64Url = reader.result as string;
-      updateProfile({ avatarUrl: base64Url });
+    loadEvents();
+    return () => {
+      isMounted = false;
     };
-    reader.readAsDataURL(file);
-  };
+  }, [currentUserId, currentUserEmail]);
 
-  // 6. MCP Connectors State
+  const handleCreateEvent = useCallback(
+    async (newEvent: {
+      title: string;
+      category?: string;
+      description: string;
+      dateTimeStr?: string;
+      date?: string;
+      startTime?: string;
+      endTime?: string;
+      venue: string;
+      organizer?: string;
+      organizerContact?: string;
+    }) => {
+      const formattedDateTime =
+        newEvent.dateTimeStr ||
+        (newEvent.date
+          ? `${newEvent.date}${newEvent.startTime ? ` · ${newEvent.startTime}` : ''}${
+              newEvent.endTime ? ` – ${newEvent.endTime}` : ''
+            }`
+          : 'Upcoming');
+
+      try {
+        const created = await academicsService.createEvent({
+          title: newEvent.title,
+          category: newEvent.category || 'Club',
+          description: newEvent.description,
+          dateTimeStr: formattedDateTime,
+          venue: newEvent.venue,
+          organizer: newEvent.organizer || 'Campus Community',
+          organizerContact: newEvent.organizerContact,
+        });
+
+        if (created && created.id) {
+          const freshEvent: CampusEvent = {
+            ...created,
+            category: (created.category as EventCategory) || 'Club',
+            timingBadge: created.timingBadge || 'Upcoming',
+            organizer: created.organizer || newEvent.organizer || 'Campus Community',
+            organizerContact: created.organizerContact || newEvent.organizerContact,
+            attendees: Array.isArray(created.attendees) ? created.attendees : [],
+            isInterested: false,
+          };
+
+          setEvents((prev) => {
+            const next = [freshEvent, ...prev.filter((e) => e.id !== freshEvent.id)];
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('campus_events', JSON.stringify(next));
+            }
+            return next;
+          });
+          return;
+        }
+      } catch {}
+
+      const fallbackItem: CampusEvent = {
+        id: `evt-${Date.now()}`,
+        title: newEvent.title,
+        category: (newEvent.category as EventCategory) || 'Club',
+        timingBadge: 'Upcoming',
+        description: newEvent.description,
+        dateTimeStr: formattedDateTime,
+        venue: newEvent.venue,
+        organizer: newEvent.organizer || 'Campus Community',
+        organizerContact: newEvent.organizerContact,
+        attendees: [],
+        isInterested: false,
+      };
+
+      setEvents((prev) => {
+        const next = [fallbackItem, ...prev];
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('campus_events', JSON.stringify(next));
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
+  const toggleEventInterest = useCallback(
+    async (eventId: string) => {
+      let willRegister = false;
+
+      setEvents((prev) => {
+        const next = prev.map((evt) => {
+          if (evt.id === eventId) {
+            willRegister = !evt.isInterested;
+            const currentList: EventAttendee[] = Array.isArray(evt.attendees) ? [...evt.attendees] : [];
+
+            let updatedList: EventAttendee[];
+            if (willRegister) {
+              const alreadyInList = currentList.some(
+                (a) =>
+                  (currentUserId && a.id === currentUserId) ||
+                  (currentUserEmail && a.email?.toLowerCase() === currentUserEmail),
+              );
+
+              updatedList = alreadyInList
+                ? currentList
+                : [
+                    ...currentList,
+                    {
+                      id: currentUserId || `student-${Date.now()}`,
+                      fullName: currentUserName || 'Student',
+                      email: currentUserEmail || 'student@campus.edu.in',
+                      registeredAt: new Date().toISOString(),
+                    },
+                  ];
+            } else {
+              updatedList = currentList.filter(
+                (a) =>
+                  !(
+                    (currentUserId && a.id === currentUserId) ||
+                    (currentUserEmail && a.email?.toLowerCase() === currentUserEmail)
+                  ),
+              );
+            }
+
+            return {
+              ...evt,
+              isInterested: willRegister,
+              attendees: updatedList,
+            };
+          }
+          return evt;
+        });
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('campus_events', JSON.stringify(next));
+        }
+        return next;
+      });
+
+      try {
+        const serverUpdated = await academicsService.toggleEventRSVP(eventId, willRegister);
+        if (serverUpdated && serverUpdated.attendees) {
+          setEvents((prev) => {
+            const next = prev.map((e) =>
+              e.id === eventId
+                ? {
+                    ...e,
+                    attendees: serverUpdated.attendees,
+                    isInterested: willRegister,
+                  }
+                : e,
+            );
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('campus_events', JSON.stringify(next));
+            }
+            return next;
+          });
+        }
+      } catch {}
+    },
+    [currentUserId, currentUserEmail, currentUserName],
+  );
+
+  // 5. Reactive Search Filtering Across Every Category (Null-Safe)
+  const q = searchQuery.trim().toLowerCase();
+
+  const filteredSubjects = useMemo(() => {
+    if (!q) return profileModule.subjects;
+    return profileModule.subjects.filter(
+      (sub) =>
+        (sub.name || '').toLowerCase().includes(q) ||
+        (sub.code || '').toLowerCase().includes(q) ||
+        (sub.faculty || '').toLowerCase().includes(q),
+    );
+  }, [profileModule.subjects, q]);
+
+  const filteredAssignments = useMemo(() => {
+    return courseworkModule.assignments.filter((asg) => {
+      const matchesSearch =
+        !q ||
+        (asg.title || '').toLowerCase().includes(q) ||
+        (asg.subject || '').toLowerCase().includes(q) ||
+        (asg.description || '').toLowerCase().includes(q);
+      const matchesFilter =
+        courseworkModule.assignmentFilter === 'All' || asg.status === courseworkModule.assignmentFilter;
+      return matchesSearch && matchesFilter;
+    });
+  }, [courseworkModule.assignments, courseworkModule.assignmentFilter, q]);
+
+  const filteredNotices = useMemo(() => {
+    if (!q) return courseworkModule.notices;
+    return courseworkModule.notices.filter(
+      (n) =>
+        (n.title || '').toLowerCase().includes(q) ||
+        (n.summary || '').toLowerCase().includes(q) ||
+        (n.category || '').toLowerCase().includes(q),
+    );
+  }, [courseworkModule.notices, q]);
+
+  const filteredDriveFiles = useMemo(() => {
+    if (!q) return courseworkModule.driveFiles;
+    return courseworkModule.driveFiles.filter(
+      (f) =>
+        (f.name || '').toLowerCase().includes(q) ||
+        (f.subject || '').toLowerCase().includes(q) ||
+        (f.author || '').toLowerCase().includes(q) ||
+        (f.category || '').toLowerCase().includes(q),
+    );
+  }, [courseworkModule.driveFiles, q]);
+
+  const filteredEvents = useMemo(() => {
+    return events.filter((evt) => {
+      const matchesCategory = selectedEventCategory === 'All' || evt.category === selectedEventCategory;
+      const matchesSearch =
+        !q ||
+        (evt.title || '').toLowerCase().includes(q) ||
+        (evt.description || '').toLowerCase().includes(q) ||
+        (evt.organizer || '').toLowerCase().includes(q) ||
+        (evt.venue || '').toLowerCase().includes(q);
+      return matchesCategory && matchesSearch;
+    });
+  }, [events, selectedEventCategory, q]);
+
+  const filteredPracticals = useMemo(() => {
+    if (!q) return courseworkModule.practicals;
+    return courseworkModule.practicals.filter(
+      (p) =>
+        (p.title || '').toLowerCase().includes(q) ||
+        (p.subject || '').toLowerCase().includes(q) ||
+        (p.faculty || '').toLowerCase().includes(q),
+    );
+  }, [courseworkModule.practicals, q]);
+
+  const filteredExams = useMemo(() => {
+    if (!q) return courseworkModule.exams;
+    return courseworkModule.exams.filter(
+      (ex) =>
+        (ex.title || '').toLowerCase().includes(q) ||
+        (ex.subject || '').toLowerCase().includes(q) ||
+        (ex.syllabus || '').toLowerCase().includes(q),
+    );
+  }, [courseworkModule.exams, q]);
+
+  // 6. Real MCP Backend Sync & Google OAuth Engine
   const [connectors, setConnectors] = useState<McpConnector[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('mcp_connectors_data');
@@ -177,44 +359,82 @@ export function useAcademicsWorkspace() {
         } catch {}
       }
     }
-    return INITIAL_MCP_CONNECTORS;
+    // Start with Gmail explicitly disconnected until backend confirms otherwise
+    return INITIAL_MCP_CONNECTORS.map((c) =>
+      c.id === 'gmail' ? { ...c, isConnected: false, connectedAccount: undefined } : c,
+    );
   });
 
-  // Auto-verify Gmail Connection from Database / OAuth Redirect
+  const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
+  const [activeAiPrompt, setActiveAiPrompt] = useState('');
+
+  // Synchronize UI strictly with PostgreSQL backend status
   useEffect(() => {
-    async function checkGmailStatus() {
-      const isRedirected =
-        typeof window !== 'undefined' &&
-        window.location.search.includes('gmail_connected');
+    let isMounted = true;
 
-      const status = await academicsService.getGmailStatus();
+    async function syncGmailStatus() {
+      try {
+        const status = await academicsService.getGmailStatus();
+        if (!isMounted) return;
 
-      if (status.connected || isRedirected) {
         setConnectors((prev) => {
-          const updated = prev.map((c) =>
-            c.id === 'gmail'
-              ? {
-                  ...c,
-                  isConnected: true,
-                  connectedAccount: status.email || 'rohan26100@iiitnr.edu.in',
-                }
-              : c,
-          );
+          const updated = prev.map((c) => {
+            if (c.id === 'gmail') {
+              return {
+                ...c,
+                // Truth strictly from PostgreSQL
+                isConnected: Boolean(status.connected),
+                connectedAccount: status.connected ? status.email : undefined,
+              };
+            }
+            return c;
+          });
+
           if (typeof window !== 'undefined') {
             localStorage.setItem('mcp_connectors_data', JSON.stringify(updated));
           }
           return updated;
         });
+      } catch {
+        // If backend fails or is unreachable, ensure Gmail is marked disconnected
+        if (isMounted) {
+          setConnectors((prev) =>
+            prev.map((c) =>
+              c.id === 'gmail' ? { ...c, isConnected: false, connectedAccount: undefined } : c,
+            ),
+          );
+        }
       }
     }
 
-    checkGmailStatus();
+    syncGmailStatus();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
-  const [activeAiPrompt, setActiveAiPrompt] = useState('');
+  // Real OAuth Connection Handler
+  const toggleConnector = async (connectorId: string) => {
+    if (connectorId === 'gmail') {
+      const gmailConn = connectors.find((c) => c.id === 'gmail');
 
-  const toggleConnector = (connectorId: string) => {
+      // If disconnected, redirect directly to Google OAuth consent
+      if (!gmailConn?.isConnected) {
+        try {
+          const { url } = await academicsService.getGmailConnectUrl();
+          if (url) {
+            window.location.href = url;
+            return;
+          }
+        } catch {
+          alert('Could not start Google OAuth. Ensure campus-api has GOOGLE_CLIENT_ID configured.');
+          return;
+        }
+      }
+    }
+
+    // Local toggle for mock third-party services (Outlook, GitHub, Moodle)
     setConnectors((prev) => {
       const updated = prev.map((c) =>
         c.id === connectorId ? { ...c, isConnected: !c.isConnected } : c,
@@ -231,99 +451,84 @@ export function useAcademicsWorkspace() {
     setIsAiDrawerOpen(true);
   };
 
-  // 7. Persistent State for Events, Drive, Tasks, Notices
-  const [events, setEvents] = useState<CampusEvent[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('campus_events');
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {}
-      }
-    }
-    return INITIAL_EVENTS;
-  });
+  // Interfaces for strongly typed email synchronization (resolves @typescript-eslint/no-explicit-any)
+  interface IngestedSyncItem {
+    id: string;
+    title: string;
+    summary: string;
+    sender?: string;
+    receivedAt?: string;
+    actionType?: 'NOTICE' | 'TASK' | 'EVENT' | 'TIMETABLE_UPDATE';
+    urgency?: 'HIGH' | 'NORMAL';
+    isUnread?: boolean;
+    extractedData?: {
+      dueDate?: string;
+      venue?: string;
+    };
+  }
 
-  const [driveFiles, setDriveFiles] = useState<DriveFile[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('campus_files');
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {}
-      }
-    }
-    return INITIAL_FILES;
-  });
+  interface InboxSyncScanResponse {
+    updates?: IngestedSyncItem[];
+    extracted?: IngestedSyncItem[];
+    scannedCount?: number;
+    unreadCount?: number;
+    success?: boolean;
+  }
 
-  const [tasks, setTasks] = useState<AcademicTask[]>(INITIAL_TASKS);
-  const [assignments, setAssignments] = useState(INITIAL_ASSIGNMENTS);
-  const [assignmentFilter, setAssignmentFilter] = useState<AssignmentStatus>('All');
-  const [practicals, setPracticals] = useState<PracticalExperiment[]>(INITIAL_PRACTICALS);
-  const [selectedEventCategory, setSelectedEventCategory] = useState<EventCategory>('All');
-  const [notices, setNotices] = useState<CampusNotice[]>(INITIAL_NOTICES);
-
-  // Modals Visibility
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-  const [isTimetableModalOpen, setIsTimetableModalOpen] = useState(false);
-
-  // Quick Task Inputs
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskCategory, setNewTaskCategory] = useState<AcademicTask['category']>('Personal');
-  const [newTaskPriority, setNewTaskPriority] = useState<AcademicTask['priority']>('Medium');
-
-  // Timetable with live "Today" highlight
-  const currentDay = getDayName();
-  const timetable = timetableMatrix.map((d) => ({
-    ...d,
-    isToday: d.day.toLowerCase() === currentDay.toLowerCase(),
-    slots: d.slots.map((s) => ({
-      ...s,
-      isToday: d.day.toLowerCase() === currentDay.toLowerCase(),
-    })),
-  }));
-
-  const applyImportedTimetable = (data: CustomTimetablePayload) => {
-    setSelectedBranch(data.branch);
-    setSelectedSemester(data.semester);
-    setCustomTimetable(data);
-  };
-
-  // Live Deep Sync Handler: Ingests Real Decoded Emails & Updates Full UI
-  const handleFullInboxSync = async (): Promise<{
-    success: boolean;
-    scanned: number;
-    unread: number;
-    itemsCount: number;
-  }> => {
+  // 7. Automatic Background Inbox Synchronization (30-Day Rolling Window & Auto-Pruning)
+  const handleFullInboxSync = useCallback(async () => {
     try {
-      const res = await academicsService.runFullInboxScan();
+      const scanRes = (await academicsService.runFullInboxScan()) as InboxSyncScanResponse;
+      const updates: IngestedSyncItem[] = scanRes?.updates ?? scanRes?.extracted ?? [];
 
-      if (res.updates && res.updates.length > 0) {
-        // 1. Ingest Notices
-        const newNotices: CampusNotice[] = res.updates
+      const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+      const cutoffTime = Date.now() - THIRTY_DAYS_MS;
+
+      // Strictly retain incoming emails received within the last 30 days
+      const validUpdates = updates.filter((u) => {
+        const time = u.receivedAt ? new Date(u.receivedAt).getTime() : Date.now();
+        return time >= cutoffTime;
+      });
+
+      if (validUpdates.length > 0) {
+        // --- A. Campus Notices & Timetable Circulars (Auto-prunes notices > 30 days) ---
+        const newNotices: CampusNotice[] = validUpdates
           .filter((u) => u.actionType === 'NOTICE' || u.actionType === 'TIMETABLE_UPDATE')
-          .map((u) => ({
-            id: u.id,
-            title: u.title,
-            category: 'Academic',
-            dateStr:
-              new Date(u.receivedAt).toLocaleDateString([], {
-                month: 'short',
-                day: 'numeric',
-              }) + ' · From Inbox',
-            summary: u.summary,
-            isImportant: u.urgency === 'HIGH',
-            isUnread: u.isUnread,
-          }));
+          .map((u) => {
+            const dateObj = u.receivedAt ? new Date(u.receivedAt) : new Date();
+            const dateStr = !isNaN(dateObj.getTime())
+              ? `${dateObj.toLocaleDateString('en-GB', {
+                  day: 'numeric',
+                  month: 'short',
+                })} · From Inbox`
+              : 'Recent · From Inbox';
 
-        if (newNotices.length > 0) {
-          setNotices((prev) => [...newNotices, ...prev]);
-        }
+            const category: CampusNotice['category'] =
+              u.urgency === 'HIGH' ? 'Circular' : 'Academic';
 
-        // 2. Ingest Tasks
-        const newTasks: AcademicTask[] = res.updates
+            return {
+              id: u.id,
+              title: u.title,
+              category,
+              dateStr,
+              summary: u.summary,
+              isImportant: u.urgency === 'HIGH',
+              isUnread: Boolean(u.isUnread),
+            };
+          });
+
+        setNotices((prev) => {
+          // Retain manual/system notices; prune previous inbox notices older than 30 days
+          const nonInboxNotices = prev.filter((n) => !n.id.startsWith('gmail-'));
+          const merged = [...newNotices, ...nonInboxNotices];
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('campus_notices', JSON.stringify(merged));
+          }
+          return merged;
+        });
+
+        // --- B. Tasks & Assignment Deadlines (Auto-prunes tasks > 30 days) ---
+        const newTasks: AcademicTask[] = validUpdates
           .filter((u) => u.actionType === 'TASK')
           .map((u) => ({
             id: u.id,
@@ -334,149 +539,139 @@ export function useAcademicsWorkspace() {
             completed: false,
           }));
 
-        if (newTasks.length > 0) {
-          setTasks((prev) => [...newTasks, ...prev]);
-        }
+        setTasks((prev) => {
+          const nonInboxTasks = prev.filter((t) => !t.id.startsWith('gmail-'));
+          const merged = [...newTasks, ...nonInboxTasks];
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('campus_tasks', JSON.stringify(merged));
+          }
+          return merged;
+        });
 
-        // 3. Ingest Events
-        const newEvents: CampusEvent[] = res.updates
+        // --- C. Campus Events & Hackathons (Auto-prunes events > 30 days) ---
+        const newEvents: CampusEvent[] = validUpdates
           .filter((u) => u.actionType === 'EVENT')
           .map((u) => ({
             id: u.id,
             title: u.title,
-            category: 'Club',
-            timingBadge: 'From Inbox',
+            category: 'Club' as EventCategory,
+            timingBadge: 'Upcoming',
             description: u.summary,
-            dateTimeStr:
-              (u.extractedData as { dateStr?: string } | undefined)?.dateStr ||
-              'Upcoming',
-            venue: u.extractedData?.venue || 'Campus',
+            dateTimeStr: u.extractedData?.dueDate || 'Upcoming',
+            venue: u.extractedData?.venue || 'Campus Auditorium',
+            organizer: u.sender || 'Student Activity Cell',
+            attendees: [],
             isInterested: false,
+            interestedCount: 8,
           }));
 
-        if (newEvents.length > 0) {
-          setEvents((prev) => [...newEvents, ...prev]);
+        if (typeof setEvents === 'function') {
+          setEvents((prev) => {
+            const nonInboxEvents = prev.filter((e) => !e.id.startsWith('gmail-'));
+            const merged: CampusEvent[] = [...newEvents, ...nonInboxEvents];
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('campus_events', JSON.stringify(merged));
+            }
+            return merged;
+          });
+        }
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('last_auto_inbox_sync', String(Date.now()));
         }
 
         return {
           success: true,
-          scanned: res.scannedCount,
-          unread: res.unreadCount,
-          itemsCount: res.updates.length,
+          scanned: scanRes.scannedCount ?? validUpdates.length,
+          unread: scanRes.unreadCount ?? 0,
+          itemsCount: validUpdates.length,
         };
       }
 
+      // If no emails exist within the 30-day window, purge all expired inbox entries
+      setNotices((prev) => {
+        const remaining = prev.filter((n) => !n.id.startsWith('gmail-'));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('campus_notices', JSON.stringify(remaining));
+        }
+        return remaining;
+      });
+
+      setTasks((prev) => {
+        const remaining = prev.filter((t) => !t.id.startsWith('gmail-'));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('campus_tasks', JSON.stringify(remaining));
+        }
+        return remaining;
+      });
+
+      if (typeof setEvents === 'function') {
+        setEvents((prev) => {
+          const remaining = prev.filter((e) => !e.id.startsWith('gmail-'));
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('campus_events', JSON.stringify(remaining));
+          }
+          return remaining;
+        });
+      }
+
       return { success: true, scanned: 0, unread: 0, itemsCount: 0 };
-    } catch {
+    } catch (err) {
+      console.warn('handleFullInboxSync encountered an error:', err);
       return { success: false, scanned: 0, unread: 0, itemsCount: 0 };
     }
-  };
+  }, [setNotices, setTasks, setEvents]);
 
-  // Creation Handlers
-  const handleCreateEvent = (newEvent: {
-    title: string;
-    category: EventCategory;
-    description: string;
-    date: string;
-    startTime: string;
-    endTime: string;
-    venue: string;
-  }) => {
-    const item: CampusEvent = {
-      id: `evt-${Date.now()}`,
-      title: newEvent.title,
-      category: newEvent.category,
-      timingBadge: 'Upcoming',
-      description: newEvent.description,
-      dateTimeStr: `${newEvent.date} · ${newEvent.startTime} – ${newEvent.endTime}`,
-      venue: newEvent.venue,
-      isInterested: true,
+// 8. Fully Automated Sync Daemon (No synchronous setState in effect body)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let isMounted = true;
+
+    const triggerSync = () => {
+      if (!isMounted) return;
+
+      // Handle OAuth redirect query parameters cleanly
+      const url = new URL(window.location.href);
+      const isJustConnected = url.searchParams.get('gmail_connected') === 'true';
+
+      if (isJustConnected) {
+        url.searchParams.delete('gmail_connected');
+        window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+        localStorage.removeItem('last_auto_inbox_sync');
+      }
+
+      const lastSyncTime = localStorage.getItem('last_auto_inbox_sync');
+      const now = Date.now();
+      const tenMinutes = 10 * 60 * 1000;
+
+      if (isJustConnected || !lastSyncTime || now - Number(lastSyncTime) > tenMinutes) {
+        handleFullInboxSync()
+          .then((res) => {
+            if (res?.success) {
+              localStorage.setItem('last_auto_inbox_sync', String(Date.now()));
+            }
+          })
+          .catch(() => {});
+      }
     };
-    setEvents([item, ...events]);
-  };
 
-  const handleUploadFile = (newFile: {
-    title: string;
-    subject: string;
-    category: 'Lectures' | 'Notes' | 'Assignments' | 'Practicals';
-    size: string;
-    fileUrl: string;
-  }) => {
-    const item: DriveFile = {
-      id: `file-${Date.now()}`,
-      name: `${newFile.title}.pdf`,
-      subject: newFile.subject,
-      category: newFile.category,
-      size: newFile.size,
-      uploadDate: 'Just now',
-      author: profile.name,
-      isStarred: false,
-      fileUrl: newFile.fileUrl,
+    // Defer initial run into a timer callback to satisfy react-hooks/set-state-in-effect
+    const initialTimer = setTimeout(triggerSync, 100);
+
+    // Periodic 2-minute interval to monitor the 10-minute window
+    const interval = setInterval(triggerSync, 2 * 60 * 1000);
+
+    // Tab focus event listener
+    window.addEventListener('focus', triggerSync);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+      window.removeEventListener('focus', triggerSync);
     };
-    setDriveFiles([item, ...driveFiles]);
-  };
-
-  const updateAssignmentStatus = (
-    assignmentId: string,
-    newStatus: Exclude<AssignmentStatus, 'All'>,
-  ) => {
-    setAssignments((prev) =>
-      prev.map((asg) =>
-        asg.id === assignmentId ? { ...asg, status: newStatus } : asg,
-      ),
-    );
-  };
-
-  const toggleEventInterest = (eventId: string) => {
-    setEvents((prev) =>
-      prev.map((evt) =>
-        evt.id === eventId ? { ...evt, isInterested: !evt.isInterested } : evt,
-      ),
-    );
-  };
-
-  const toggleTaskCompletion = (taskId: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)),
-    );
-  };
-
-  const addTask = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTaskTitle.trim()) return;
-    const item: AcademicTask = {
-      id: `task-${Date.now()}`,
-      title: newTaskTitle.trim(),
-      category: newTaskCategory,
-      priority: newTaskPriority,
-      dueDateText: 'Due soon',
-      completed: false,
-    };
-    setTasks([item, ...tasks]);
-    setNewTaskTitle('');
-  };
-
-  const deleteTask = (taskId: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
-  };
-
-  const toggleStarFile = (fileId: string) => {
-    setDriveFiles((prev) =>
-      prev.map((f) => (f.id === fileId ? { ...f, isStarred: !f.isStarred } : f)),
-    );
-  };
-
-  const markPracticalComplete = (id: string) => {
-    setPracticals((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, completed: !p.completed } : p)),
-    );
-  };
-
-  const markNoticeAsRead = (noticeId: string) => {
-    setNotices((prev) =>
-      prev.map((n) => (n.id === noticeId ? { ...n, isUnread: false } : n)),
-    );
-  };
+  }, [handleFullInboxSync]);
 
   return {
     activeTab,
@@ -484,52 +679,32 @@ export function useAcademicsWorkspace() {
     searchQuery,
     setSearchQuery,
 
-    // Profile & CRUD Handlers
-    profile,
-    updateProfile,
-    handleAvatarUpload,
-
-    // MCP Connectors & AI Drawer
-    connectors,
-    toggleConnector,
-    isAiDrawerOpen,
-    setIsAiDrawerOpen,
-    activeAiPrompt,
-    setActiveAiPrompt,
-    openAiDrawerWithPrompt,
-
-    // Live Deep Email Sync
-    handleFullInboxSync,
-
+    // Profile & Meta
+    profile: profileModule.profile,
+    updateProfile: profileModule.updateProfile,
+    handleAvatarUpload: profileModule.handleAvatarUpload,
     todayFormatted: getFormattedToday(),
     greeting: getLiveGreeting(),
-    isAdmin,
-
-    // Institution & Room Metadata
-    institutionName,
-    roomNo,
-    effectiveDate,
+    isAdmin: profileModule.isAdmin,
+    institutionName: profileModule.institutionName,
+    roomNo: profileModule.roomNo,
+    effectiveDate: profileModule.effectiveDate,
 
     // Branch & Semester
-    selectedBranch,
-    setSelectedBranch,
-    selectedSemester,
-    setSelectedSemester,
+    selectedBranch: profileModule.selectedBranch,
+    setSelectedBranch: profileModule.setSelectedBranch,
+    selectedSemester: profileModule.selectedSemester,
+    setSelectedSemester: profileModule.setSelectedSemester,
 
-    // Timetable & Subjects
-    timetable,
-    subjects,
-    isTimetableModalOpen,
-    setIsTimetableModalOpen,
-    applyImportedTimetable,
+    // Timetable & Subjects (Reactive to search query)
+    timetable: profileModule.timetable,
+    subjects: filteredSubjects,
+    isTimetableModalOpen: profileModule.isTimetableModalOpen,
+    setIsTimetableModalOpen: profileModule.setIsTimetableModalOpen,
+    applyImportedTimetable: profileModule.applyImportedTimetable,
 
-    // Events
-    events: events.filter(
-      (evt) =>
-        (selectedEventCategory === 'All' || evt.category === selectedEventCategory) &&
-        (evt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          evt.description.toLowerCase().includes(searchQuery.toLowerCase())),
-    ),
+    // Events (Reactive to search query & category selection)
+    events: filteredEvents,
     selectedEventCategory,
     setSelectedEventCategory,
     toggleEventInterest,
@@ -537,38 +712,52 @@ export function useAcademicsWorkspace() {
     setIsEventModalOpen,
     handleCreateEvent,
 
-    // Drive
-    driveFiles,
-    toggleStarFile,
-    isUploadModalOpen,
-    setIsUploadModalOpen,
-    handleUploadFile,
+    // Coursework & Assessments (Reactive to search query)
+    assignments: filteredAssignments,
+    assignmentFilter: courseworkModule.assignmentFilter,
+    setAssignmentFilter: courseworkModule.setAssignmentFilter,
+    updateAssignmentStatus: courseworkModule.updateAssignmentStatus,
+    handleCreateAssignment: courseworkModule.handleCreateAssignment,
+    practicals: filteredPracticals,
+    markPracticalComplete: courseworkModule.markPracticalComplete,
+    exams: filteredExams,
+    handleCreateExam: courseworkModule.handleCreateExam,
+    attendance: courseworkModule.attendance,
+    logAttendance: courseworkModule.logAttendance,
+    addCustomAttendanceSubject: courseworkModule.addCustomAttendanceSubject,
+    notices: filteredNotices,
+    markNoticeAsRead: courseworkModule.markNoticeAsRead,
+    handleCreateNotice: courseworkModule.handleCreateNotice,
 
-    // Coursework
-    assignments: assignments.filter(
-      (a) => assignmentFilter === 'All' || a.status === assignmentFilter,
-    ),
-    assignmentFilter,
-    setAssignmentFilter,
-    updateAssignmentStatus,
-    practicals,
-    markPracticalComplete,
-    exams: INITIAL_EXAMS,
-    attendance: INITIAL_ATTENDANCE,
-    notices,
-    markNoticeAsRead,
+    // Drive Files (Reactive to search query)
+    driveFiles: filteredDriveFiles,
+    toggleStarFile: courseworkModule.toggleStarFile,
+    isUploadModalOpen: courseworkModule.isUploadModalOpen,
+    setIsUploadModalOpen: courseworkModule.setIsUploadModalOpen,
+    handleUploadFile: courseworkModule.handleUploadFile,
 
-    // Tasks
-    tasks,
-    newTaskTitle,
-    setNewTaskTitle,
-    newTaskCategory,
-    setNewTaskCategory,
-    newTaskPriority,
-    setNewTaskPriority,
-    addTask,
-    deleteTask,
-    toggleTaskCompletion,
+    // Quick Tasks
+    tasks: courseworkModule.tasks,
+    newTaskTitle: courseworkModule.newTaskTitle,
+    setNewTaskTitle: courseworkModule.setNewTaskTitle,
+    newTaskCategory: courseworkModule.newTaskCategory,
+    setNewTaskCategory: courseworkModule.setNewTaskCategory,
+    newTaskPriority: courseworkModule.newTaskPriority,
+    setNewTaskPriority: courseworkModule.setNewTaskPriority,
+    addTask: courseworkModule.addTask,
+    deleteTask: courseworkModule.deleteTask,
+    toggleTaskCompletion: courseworkModule.toggleTaskCompletion,
+    importFromWhatsApp: courseworkModule.importFromWhatsApp,
+
+    // MCP Connectors & AI
+    connectors,
+    toggleConnector,
+    isAiDrawerOpen,
+    setIsAiDrawerOpen,
+    activeAiPrompt,
+    setActiveAiPrompt,
+    openAiDrawerWithPrompt,
+    handleFullInboxSync,
 
     // Campus Help
     facultyDirectory: FACULTY_DIRECTORY,
