@@ -2,10 +2,12 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthSession } from '@/features/auth/hooks/useAuthSession';
 
 export function UserProfileMenu() {
   const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
   const { user, logout } = useAuthSession();
 
   if (!user) return null;
@@ -60,7 +62,15 @@ export function UserProfileMenu() {
                 type="button"
                 onClick={async () => {
                   setIsOpen(false);
-                  await logout();
+                  try {
+                    await logout();
+                  } finally {
+                    // Flush all cached campus data and force clean login state
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    router.push('/login');
+                    router.refresh();
+                  }
                 }}
                 className="w-full text-left px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded-lg font-medium transition cursor-pointer flex items-center justify-between"
               >

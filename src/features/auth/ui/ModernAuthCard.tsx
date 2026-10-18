@@ -64,18 +64,14 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
   // 🌐 PLACED HERE: Capture Google OAuth token from URL, set cookies, and redirect
   useEffect(() => {
     const oauthToken = searchParams.get('token');
-    const oauthRole = searchParams.get('role') || 'STUDENT';
-    const oauthAccountType = searchParams.get('accountType') || 'INDIVIDUAL';
 
     if (oauthToken) {
       const isSecure =
         typeof window !== 'undefined' && window.location.protocol === 'https:';
       const flags = `path=/; max-age=604800; SameSite=Lax; ${isSecure ? 'Secure;' : ''}`;
 
-      // Set first-party cookies directly on workspace-campus-web.vercel.app
+      // Set ONLY the cryptographically signed token cookie
       document.cookie = `token=${encodeURIComponent(oauthToken)}; ${flags}`;
-      document.cookie = `user_role=${encodeURIComponent(oauthRole)}; ${flags}`;
-      document.cookie = `account_type=${encodeURIComponent(oauthAccountType)}; ${flags}`;
 
       // Re-hydrate session and immediately forward to dashboard
       refreshSession().then(() => {
@@ -95,15 +91,10 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
       normalizedEmail.includes('@'),
   );
 
-  // UI-only cookies (auth token stays httpOnly from API)
-  const setUiCookies = (role: string, universityName?: string | null) => {
-    const isSecure =
-      typeof window !== 'undefined' && window.location.protocol === 'https:';
-    const flags = `path=/; max-age=604800; SameSite=Lax; ${isSecure ? 'Secure;' : ''}`;
-    document.cookie = `user_role=${encodeURIComponent(role)}; ${flags}`;
-    document.cookie = `account_type=${
-      universityName ? 'INSTITUTIONAL' : 'INDIVIDUAL'
-    }; ${flags}`;
+  // Session details (role and accountType) are derived securely from the signed JWT payload
+  const setUiCookies = (role?: string, universityName?: string | null) => {
+    void role;
+    void universityName;
   };
 
   const resetMessages = () => {
