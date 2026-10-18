@@ -21,7 +21,7 @@ interface ModalProps {
   currentSemester: number;
 }
 
-// Strongly typed interfaces for raw OCR JSON responses
+// Strongly typed interfaces for raw OCR/AI document responses
 interface RawParsedSlot {
   id?: string;
   subjectName?: string;
@@ -42,12 +42,23 @@ interface RawParsedDay {
 
 interface RawOcrResponse {
   success?: boolean;
+  data?: {
+    institution?: string;
+    roomNo?: string;
+    effectiveDate?: string;
+    timetable?: RawParsedDay[];
+    subjects?: SubjectItem[];
+  };
   timetable?: RawParsedDay[];
+  institution?: string;
+  roomNo?: string;
+  effectiveDate?: string;
+  subjects?: SubjectItem[];
   error?: string;
 }
 
 /**
- * Utility to derive unique SubjectItem cards automatically from timetable slots
+ * Derives unique SubjectItem cards and credit weights automatically from timetable slots
  */
 function deriveSubjectsFromTimetable(timetable: DayTimetable[]): SubjectItem[] {
   const map = new Map<string, { faculty: string; code: string; count: number }>();
@@ -72,7 +83,7 @@ function deriveSubjectsFromTimetable(timetable: DayTimetable[]): SubjectItem[] {
     code: meta.code,
     faculty: meta.faculty,
     classesPerWeek: meta.count,
-    credits: meta.count >= 4 ? 4 : 3,
+    credits: meta.count >= 4 ? 4 : meta.count >= 2 ? 2 : 1,
     assignmentsCount: 2,
     filesCount: 3,
     unitsCompleted: 1,
@@ -93,11 +104,15 @@ export function AdminTimetableUploadModal({
   );
   const [selectedFileName, setSelectedFileName] = useState('');
   const [customParsedData, setCustomParsedData] = useState<{
+    institution?: string;
+    roomNo?: string;
+    effectiveDate?: string;
     timetable: DayTimetable[];
     subjects: SubjectItem[];
   } | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -107,7 +122,8 @@ export function AdminTimetableUploadModal({
 
     setSelectedFileName(file.name);
     setIsParsing(true);
-    setStatusMessage('Scanning timetable document (PDF / OCR)...');
+    setErrorMessage(null);
+    setStatusMessage(`Scanning ${file.name} for ${currentBranch} Sem ${currentSemester}...`);
 
     try {
       const reader = new FileReader();
@@ -117,77 +133,107 @@ export function AdminTimetableUploadModal({
 
         try {
           const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-          const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL || 'https://workspace-campus-api.onrender.com/api'}/universities/timetable/parse-document`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-              },
-              body: JSON.stringify({
-                fileBase64: base64Data,
-                mimeType: file.type || 'application/pdf',
-              }),
-            }
-          );
+          const apiUrl =
+            process.env.NEXT_PUBLIC_API_URL || 'https://workspace-campus-api.onrender.com/api';
+
+          const res = await fetch(`${apiUrl}/university/timetable/parse-document`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({
+              fileBase64: base64Data,
+              mimeType: file.type || 'application/pdf',
+              branch: currentBranch,
+              semester: currentSemester,
+            }),
+          });
 
           if (res.ok) {
             const data = (await res.json()) as RawOcrResponse;
-            if (data.success && Array.isArray(data.timetable)) {
-              const formattedTimetable: DayTimetable[] = data.timetable.map((d: RawParsedDay) => ({
-                day: d.day,
-                dateStr: d.dateStr || 'Schedule',
-                isToday: false,
-                classCount: d.slots?.length || 0,
-                slots: (d.slots || []).map((s: RawParsedSlot, idx: number) => ({
-                  id: s.id || `slot-${idx}`,
-                  subjectName: s.subjectName || s.subject || 'Class',
-                  code: s.code || 'AC101',
-                  type: s.type || 'Theory',
-                  startTime: s.startTime || '09:00',
-                  endTime: s.endTime || '09:55',
-                  room: s.room || 'Room 138',
-                  faculty: s.faculty || 'Faculty',
-                  isToday: false,
-                })),
-              }));
+            const parsedTimetable = data.data?.timetable || data.timetable;
 
-              const derivedSubs = deriveSubjectsFromTimetable(formattedTimetable);
-              setCustomParsedData({ timetable: formattedTimetable, subjects: derivedSubs });
+            if (data.success && Array.isArray(parsedTimetable)) {
+              const formattedTimetable: DayTimetable[] = parsedTimetable.map(
+                (d: RawParsedDay, dayIdx: number) => ({
+                  day: d.day,
+                  dateStr: d.dateStr || `Day ${dayIdx + 1}`,
+                  isToday: false,
+                  classCount: d.slots?.length || 0,
+                  slots: (d.slots || []).map((s: RawParsedSlot, idx: number) => ({
+                    id: s.id || `slot-${dayIdx}-${idx}`,
+                    subjectName: s.subjectName || s.subject || 'Class',
+                    code: s.code || 'AC101',
+                    type: s.type || 'Theory',
+                    startTime: s.startTime || '09:00',
+                    endTime: s.endTime || '09:55',
+                    room: s.room || data.data?.roomNo || data.roomNo || 'Room 138',
+                    faculty: s.faculty || 'Faculty',
+                    isToday: false,
+                  })),
+                })
+              );
+
+              const derivedSubs =
+                data.data?.subjects ||
+                data.subjects ||
+                deriveSubjectsFromTimetable(formattedTimetable);
+
+              setCustomParsedData({
+                institution:
+                  data.data?.institution || data.institution || 'Dr. SPM IIIT Naya Raipur',
+                roomNo: data.data?.roomNo || data.roomNo || 'Room 138',
+                effectiveDate:
+                  data.data?.effectiveDate || data.effectiveDate || '24/08/2026',
+                timetable: formattedTimetable,
+                subjects: derivedSubs,
+              });
+
               setSelectedPreset('CUSTOM');
-              setStatusMessage(`✓ Successfully parsed ${formattedTimetable.length} days and ${derivedSubs.length} unique courses!`);
+              setStatusMessage(
+                `✓ Successfully extracted ${formattedTimetable.length} days and ${derivedSubs.length} unique courses!`
+              );
               setIsParsing(false);
               return;
+            } else if (data.error) {
+              setErrorMessage(data.error);
             }
+          } else {
+            setErrorMessage('Could not connect to AI OCR parser. Check backend status.');
           }
         } catch {
-          // Preset fallback if endpoint is unavailable
+          setErrorMessage('Network connection error while sending file.');
         }
 
-        const fallbackConfig = CAMPUS_TIMETABLES_REGISTRY['CSE_1'];
+        // Graceful preset fallback if the document parser is offline
+        const fallbackConfig =
+          CAMPUS_TIMETABLES_REGISTRY[currentBranch === 'ECE' ? 'ECE_1' : 'CSE_1'];
         setCustomParsedData({
+          institution: fallbackConfig.institution,
+          roomNo: fallbackConfig.roomNo,
+          effectiveDate: fallbackConfig.effectiveDate,
           timetable: fallbackConfig.timetable,
           subjects: fallbackConfig.subjects,
         });
         setSelectedPreset('CUSTOM');
-        setStatusMessage('✓ Extracted schedule matrix from document.');
+        setStatusMessage('✓ Loaded verified institution timetable matrix.');
         setIsParsing(false);
       };
     } catch {
       setIsParsing(false);
-      setStatusMessage('Could not read file. Reverting to verified preset.');
+      setErrorMessage('Could not read local file from device.');
     }
   };
 
   const handleApply = () => {
     if (selectedPreset === 'CUSTOM' && customParsedData) {
       onApplyTimetable({
-        institution: 'Dr. SPM IIIT Naya Raipur',
+        institution: customParsedData.institution || 'Dr. SPM IIIT Naya Raipur',
         branch: currentBranch,
         semester: currentSemester,
-        roomNo: 'Room 138',
-        effectiveDate: new Date().toLocaleDateString('en-GB'),
+        roomNo: customParsedData.roomNo || 'Room 138',
+        effectiveDate: customParsedData.effectiveDate || '24/08/2026',
         timetable: customParsedData.timetable,
         subjects: customParsedData.subjects,
       });
@@ -214,8 +260,8 @@ export function AdminTimetableUploadModal({
   const activePresetData =
     selectedPreset === 'CUSTOM' && customParsedData
       ? {
-          roomNo: 'Room 138',
-          effectiveDate: 'Latest Upload',
+          roomNo: customParsedData.roomNo || 'Room 138',
+          effectiveDate: customParsedData.effectiveDate || '24/08/2026',
           timetable: customParsedData.timetable,
           subjects: customParsedData.subjects,
         }
@@ -235,22 +281,26 @@ export function AdminTimetableUploadModal({
               </h3>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Active Scope: <span className="font-semibold text-slate-700">{currentBranch} · Semester {currentSemester}</span>
+              Active Scope:{' '}
+              <span className="font-semibold text-slate-700">
+                {currentBranch} · Semester {currentSemester}
+              </span>
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-full text-slate-400 hover:text-slate-600"
+            className="p-1 rounded-full text-slate-400 hover:text-slate-600 cursor-pointer"
           >
             ✕
           </button>
         </div>
 
         <div className="space-y-4 pt-4">
+          {/* Quick Presets Selection */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Select Verified Timetable Preset:
+              Verified Institution Presets:
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -258,8 +308,9 @@ export function AdminTimetableUploadModal({
                 onClick={() => {
                   setSelectedPreset('CSE_1');
                   setCustomParsedData(null);
+                  setErrorMessage(null);
                 }}
-                className={`p-3.5 rounded-2xl border text-left transition ${
+                className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
                   selectedPreset === 'CSE_1'
                     ? 'border-indigo-600 bg-indigo-50/70 text-indigo-900 ring-2 ring-indigo-200'
                     : 'border-slate-200 hover:bg-slate-50 text-slate-700'
@@ -284,8 +335,9 @@ export function AdminTimetableUploadModal({
                 onClick={() => {
                   setSelectedPreset('ECE_1');
                   setCustomParsedData(null);
+                  setErrorMessage(null);
                 }}
-                className={`p-3.5 rounded-2xl border text-left transition ${
+                className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
                   selectedPreset === 'ECE_1'
                     ? 'border-indigo-600 bg-indigo-50/70 text-indigo-900 ring-2 ring-indigo-200'
                     : 'border-slate-200 hover:bg-slate-50 text-slate-700'
@@ -307,9 +359,10 @@ export function AdminTimetableUploadModal({
             </div>
           </div>
 
+          {/* Dynamic File Upload */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Or Upload Official PDF / Timetable Image (OCR / Dynamic Sync):
+              Or Upload Official PDF / Timetable Image (Dynamic AI Sync):
             </label>
             <div className="border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl p-4 text-center cursor-pointer transition bg-slate-50/50">
               <input
@@ -331,42 +384,58 @@ export function AdminTimetableUploadModal({
                 )}
               </label>
             </div>
+
             {isParsing && (
-              <p className="text-[11px] text-indigo-600 mt-1 animate-pulse">
+              <p className="text-[11px] text-indigo-600 mt-1 animate-pulse font-medium">
                 Analyzing timetable slots, room numbers, and instructor allocations...
               </p>
             )}
+
             {statusMessage && !isParsing && (
               <p className="text-[11px] text-emerald-600 font-medium mt-1">
                 {statusMessage}
               </p>
             )}
+
+            {errorMessage && (
+              <p className="text-[11px] text-rose-600 font-medium mt-1">
+                ⚠️ {errorMessage}
+              </p>
+            )}
           </div>
 
+          {/* Extracted Data Live Preview */}
           <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-slate-800">
-                Preview: {activePresetData.roomNo} ({activePresetData.effectiveDate})
+                Preview: {activePresetData.roomNo} (w.e.f. {activePresetData.effectiveDate})
               </span>
               <span className="text-[11px] text-indigo-600 font-medium">
                 {activePresetData.timetable.length} Active Days · {activePresetData.subjects.length} Courses
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 max-h-28 overflow-y-auto pr-1">
-              {activePresetData.subjects.slice(0, 8).map((sub) => (
-                <div key={sub.id} className="bg-white p-1.5 rounded-lg border border-slate-100 truncate">
+              {activePresetData.subjects.slice(0, 10).map((sub) => (
+                <div
+                  key={sub.id}
+                  className="bg-white p-1.5 rounded-lg border border-slate-100 truncate"
+                >
                   <span className="font-bold text-slate-900">{sub.name}</span>
-                  <span className="block text-slate-400 text-[10px]">{sub.faculty} ({sub.classesPerWeek} classes/wk)</span>
+                  <span className="block text-slate-400 text-[10px]">
+                    {sub.faculty} ({sub.classesPerWeek} classes/wk)
+                  </span>
                 </div>
               ))}
             </div>
           </div>
 
+          {/* Action Buttons */}
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+              disabled={isParsing}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
             >
               Cancel
             </button>
@@ -374,7 +443,7 @@ export function AdminTimetableUploadModal({
               type="button"
               onClick={handleApply}
               disabled={isParsing}
-              className="px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs disabled:opacity-50"
+              className="px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs disabled:opacity-50 transition cursor-pointer"
             >
               Deploy Timetable to Campus
             </button>
