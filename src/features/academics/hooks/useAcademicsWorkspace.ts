@@ -79,17 +79,37 @@ export function useAcademicsWorkspace() {
       try {
         const liveEvents = await academicsService.getEvents();
         if (isMounted && liveEvents && liveEvents.length > 0) {
-          const normalized: CampusEvent[] = liveEvents.map((evt) => {
+          const normalized: CampusEvent[] = liveEvents.map((evt: CampusEvent & { registeredCount?: number }) => {
             const attendeesList: EventAttendee[] = Array.isArray(evt.attendees) ? evt.attendees : [];
-            const isUserRegistered = attendeesList.some(
-              (a) =>
-                (currentUserId && a.id === currentUserId) ||
-                (currentUserEmail && a.email?.toLowerCase() === currentUserEmail),
-            );
+
+            // 1. Prioritize PostgreSQL's per-user isInterested boolean
+            const isUserRegistered =
+              typeof evt.isInterested === 'boolean'
+                ? evt.isInterested
+                : attendeesList.some(
+                    (a) =>
+                      (currentUserId && a.id === currentUserId) ||
+                      (currentUserEmail && a.email?.toLowerCase() === currentUserEmail),
+                  );
+
+            // 2. Synchronize attendee roster length with true DB registeredCount
+            const count = evt.registeredCount ?? attendeesList.length;
+            let effectiveAttendees = attendeesList;
+            if (count > attendeesList.length) {
+              effectiveAttendees = [
+                ...attendeesList,
+                ...Array.from({ length: count - attendeesList.length }, (_, i) => ({
+                  id: `registered-${i}`,
+                  fullName: 'Registered Student',
+                  email: '',
+                  registeredAt: new Date().toISOString(),
+                })),
+              ];
+            }
 
             return {
               ...evt,
-              attendees: attendeesList,
+              attendees: effectiveAttendees,
               isInterested: isUserRegistered,
             };
           });
@@ -247,17 +267,25 @@ export function useAcademicsWorkspace() {
 
       try {
         const serverUpdated = await academicsService.toggleEventRSVP(eventId, willRegister);
-        if (serverUpdated && serverUpdated.attendees) {
+        if (serverUpdated) {
           setEvents((prev) => {
-            const next = prev.map((e) =>
-              e.id === eventId
-                ? {
-                    ...e,
-                    attendees: serverUpdated.attendees,
-                    isInterested: willRegister,
-                  }
-                : e,
-            );
+            const next = prev.map((e) => {
+              if (e.id === eventId) {
+                const updatedAttendees = Array.isArray(serverUpdated.attendees)
+                  ? serverUpdated.attendees
+                  : e.attendees;
+
+                return {
+                  ...e,
+                  attendees: updatedAttendees,
+                  isInterested:
+                    typeof serverUpdated.isInterested === 'boolean'
+                      ? serverUpdated.isInterested
+                      : willRegister,
+                };
+              }
+              return e;
+            });
             if (typeof window !== 'undefined') {
               localStorage.setItem('campus_events', JSON.stringify(next));
             }
