@@ -76,6 +76,7 @@ export function AcademicsApp() {
 
     // Assessments & Attendance
     exams,
+    attendance,
     notices,
     markNoticeAsRead,
     handleCreateNotice,
@@ -497,6 +498,8 @@ export function AcademicsApp() {
               todaySchedule={timetable.find((d) => d.isToday)?.slots || []}
               assignments={assignments}
               notices={notices}
+              exams={exams}
+              attendance={attendance}
             />
           )}
 

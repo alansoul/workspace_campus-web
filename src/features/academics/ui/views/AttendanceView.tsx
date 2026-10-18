@@ -7,11 +7,30 @@ export function AttendanceView() {
   const { attendance, logAttendance, addCustomAttendanceSubject } = useAcademicsWorkspace();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [subjectName, setSubjectName] = useState('');
   const [totalClasses, setTotalClasses] = useState('0');
   const [attendedClasses, setAttendedClasses] = useState('0');
 
-  const handleAddSubject = (e: React.FormEvent) => {
+  // Open modal for a new subject
+  const handleOpenAdd = () => {
+    setIsEditMode(false);
+    setSubjectName('');
+    setTotalClasses('0');
+    setAttendedClasses('0');
+    setIsModalOpen(true);
+  };
+
+  // Open modal to correct accidental clicks on an existing subject
+  const handleOpenEdit = (sub: { subject: string; totalClasses: number; attended: number }) => {
+    setIsEditMode(true);
+    setSubjectName(sub.subject);
+    setTotalClasses(sub.totalClasses.toString());
+    setAttendedClasses(sub.attended.toString());
+    setIsModalOpen(true);
+  };
+
+  const handleSaveSubject = (e: React.FormEvent) => {
     e.preventDefault();
     if (!subjectName.trim()) return;
 
@@ -25,6 +44,7 @@ export function AttendanceView() {
     setTotalClasses('0');
     setAttendedClasses('0');
     setIsModalOpen(false);
+    setIsEditMode(false);
   };
 
   return (
@@ -43,7 +63,7 @@ export function AttendanceView() {
 
         <button
           type="button"
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenAdd}
           className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-sm transition-all cursor-pointer"
         >
           <span className="text-base font-bold leading-none">+</span> Add Subject
@@ -63,7 +83,18 @@ export function AttendanceView() {
             >
               <div className="flex items-start justify-between gap-4 mb-3">
                 <div>
-                  <h3 className="font-semibold text-slate-900 text-base">{sub.subject}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-slate-900 text-base">{sub.subject}</h3>
+                    {/* ✏️ Direct Edit / Undo Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(sub)}
+                      className="text-xs px-2 py-0.5 rounded-md bg-slate-100 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 transition-colors font-medium cursor-pointer"
+                      title="Correct Attendance Count"
+                    >
+                      ✏️ Edit
+                    </button>
+                  </div>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {sub.attended} attended / {sub.totalClasses} total classes
                   </p>
@@ -120,22 +151,27 @@ export function AttendanceView() {
         })}
       </div>
 
-      {/* Add Subject Modal */}
+      {/* Add / Edit Attendance Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 text-lg">Add Course to Tracker</h3>
+              <h3 className="font-bold text-slate-900 text-lg">
+                {isEditMode ? `Correct Count: ${subjectName}` : 'Add Course to Tracker'}
+              </h3>
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setIsEditMode(false);
+                }}
                 className="text-slate-400 hover:text-slate-600 text-xl font-bold cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleAddSubject} className="p-5 space-y-4">
+            <form onSubmit={handleSaveSubject} className="p-5 space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">
                   Subject / Course Name
@@ -145,9 +181,17 @@ export function AttendanceView() {
                   required
                   placeholder="e.g. IT Workshop Lab or Machine Learning"
                   value={subjectName}
+                  disabled={isEditMode}
                   onChange={(e) => setSubjectName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 ${
+                    isEditMode ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''
+                  }`}
                 />
+                {isEditMode && (
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Subject name is locked while correcting counts.
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -181,7 +225,10 @@ export function AttendanceView() {
               <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setIsEditMode(false);
+                  }}
                   className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
@@ -190,7 +237,7 @@ export function AttendanceView() {
                   type="submit"
                   className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-colors cursor-pointer"
                 >
-                  Add Subject
+                  {isEditMode ? 'Save Count' : 'Add Subject'}
                 </button>
               </div>
             </form>

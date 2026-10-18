@@ -3,42 +3,103 @@
 import React from 'react';
 import { ScheduleSlot, AssignmentItem, CampusNotice, AcademicTab } from '../../types/academics.types';
 
+interface AttendanceItem {
+  subject?: string;
+  attended?: number;
+  totalClasses?: number;
+  attendancePct?: number;
+  statusText?: string;
+}
+
+interface ExamInfo {
+  id?: string;
+  title?: string;
+  subject?: string;
+  relativeNotice?: string;
+  timeStr?: string;
+}
+
 interface OverviewProps {
   onNavigate: (tab: AcademicTab) => void;
   todaySchedule: ScheduleSlot[];
   assignments: AssignmentItem[];
   notices: CampusNotice[];
+  exams?: ExamInfo[];
+  attendance?: AttendanceItem[];
 }
 
 export function AcademicsOverviewView({
   onNavigate,
-  todaySchedule,
-  assignments,
-  notices,
+  todaySchedule = [],
+  assignments = [],
+  notices = [],
+  exams = [],
+  attendance = [],
 }: OverviewProps) {
+  // 1. Live Classes Today
+  const classesTodayCount = todaySchedule.length;
+  const nextClassText =
+    classesTodayCount > 0
+      ? `Next ${todaySchedule[0].subjectName || 'Class'} at ${todaySchedule[0].startTime || '09:00'}`
+      : 'No classes today';
+
+  // 2. Live Assignments Due
+  const pendingAssignments = assignments.filter((a) => a.status !== 'Submitted');
+  const dueCount = pendingAssignments.length;
+  const overdueCount = assignments.filter((a) =>
+    (a.relativeDue || '').toLowerCase().includes('overdue'),
+  ).length;
+
+  // 3. Live Next Exam
+  const nextExam = exams && exams.length > 0 ? exams[0] : null;
+  const nextExamTime = nextExam?.relativeNotice || (nextExam ? 'Upcoming' : 'None');
+  const nextExamSubject = nextExam?.subject || (nextExam ? nextExam.title : 'All clear');
+
+  // 4. Live Weighted Attendance Average
+  const totalAttended = attendance.reduce((sum, item) => sum + (item.attended || 0), 0);
+  const totalHeld = attendance.reduce((sum, item) => sum + (item.totalClasses || 0), 0);
+  const avgAttendance =
+    totalHeld > 0
+      ? Math.round((totalAttended / totalHeld) * 100)
+      : attendance.length > 0
+      ? Math.round(
+          attendance.reduce((sum, item) => sum + (item.attendancePct || 0), 0) / attendance.length,
+        )
+      : 85;
+  const isAttendanceWarning = avgAttendance < 75;
+
   return (
     <div className="space-y-6">
       {/* 4 Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
           <p className="text-xs text-slate-500">Classes today</p>
-          <p className="text-3xl font-bold text-slate-900 mt-1">4</p>
-          <p className="text-xs text-indigo-600 font-medium mt-1">Next DE at 09:00</p>
+          <p className="text-3xl font-bold text-slate-900 mt-1">{classesTodayCount}</p>
+          <p className="text-xs text-indigo-600 font-medium mt-1 truncate">{nextClassText}</p>
         </div>
+
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
           <p className="text-xs text-slate-500">Due this week</p>
-          <p className="text-3xl font-bold text-slate-900 mt-1">10</p>
-          <p className="text-xs text-rose-600 font-medium mt-1">1 overdue</p>
+          <p className="text-3xl font-bold text-slate-900 mt-1">{dueCount}</p>
+          <p className={`text-xs font-medium mt-1 ${overdueCount > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+            {overdueCount > 0 ? `${overdueCount} overdue` : 'On track'}
+          </p>
         </div>
+
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
           <p className="text-xs text-slate-500">Next exam</p>
-          <p className="text-3xl font-bold text-slate-900 mt-1">2d</p>
-          <p className="text-xs text-slate-500 mt-1">Data Structures</p>
+          <p className="text-3xl font-bold text-slate-900 mt-1">{nextExamTime}</p>
+          <p className="text-xs text-slate-500 mt-1 truncate">{nextExamSubject}</p>
         </div>
+
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
           <p className="text-xs text-slate-500">Avg attendance</p>
-          <p className="text-3xl font-bold text-slate-900 mt-1">82%</p>
-          <p className="text-xs text-emerald-600 font-medium mt-1">On track</p>
+          <p className={`text-3xl font-bold mt-1 ${isAttendanceWarning ? 'text-amber-600' : 'text-slate-900'}`}>
+            {avgAttendance}%
+          </p>
+          <p className={`text-xs font-medium mt-1 ${isAttendanceWarning ? 'text-amber-600' : 'text-emerald-600'}`}>
+            {isAttendanceWarning ? 'Attention required' : 'On track'}
+          </p>
         </div>
       </div>
 
@@ -49,36 +110,38 @@ export function AcademicsOverviewView({
             <h3 className="font-semibold text-slate-900 text-lg">Today&apos;s schedule</h3>
             <button
               onClick={() => onNavigate('timetable')}
-              className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-lg"
+              className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-lg cursor-pointer"
             >
               Week view
             </button>
           </div>
 
           <div className="space-y-3">
-            {todaySchedule.map((slot) => (
-              <div
-                key={slot.id}
-                className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/70 border border-slate-100 hover:bg-white hover:border-slate-200 transition-all"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-slate-900 text-sm">{slot.subjectName}</p>
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600">
-                      {slot.type}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {slot.startTime} – {slot.endTime} · {slot.room} · {slot.faculty}
-                  </p>
-                </div>
+            {todaySchedule.length === 0 ? (
+              <div className="p-8 text-center border border-dashed border-slate-200 rounded-2xl">
+                <p className="text-sm font-semibold text-slate-700">No classes scheduled for today</p>
+                <p className="text-xs text-slate-400 mt-0.5">Enjoy your break or check upcoming coursework!</p>
               </div>
-            ))}
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-600">
-            <span className="w-2 h-2 rounded-full bg-indigo-600" />
-            <span className="font-medium">Today&apos;s tasks:</span> Finish DBMS assignment 4 and submit
+            ) : (
+              todaySchedule.map((slot) => (
+                <div
+                  key={slot.id}
+                  className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/70 border border-slate-100 hover:bg-white hover:border-slate-200 transition-all"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-slate-900 text-sm">{slot.subjectName}</p>
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600">
+                        {slot.type}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {slot.startTime} – {slot.endTime} · {slot.room} · {slot.faculty}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -90,7 +153,7 @@ export function AcademicsOverviewView({
               <h3 className="font-semibold text-slate-900 text-base">Upcoming deadlines</h3>
               <button
                 onClick={() => onNavigate('assignments')}
-                className="text-xs text-indigo-600 hover:underline"
+                className="text-xs text-indigo-600 hover:underline cursor-pointer"
               >
                 View all
               </button>
@@ -99,11 +162,11 @@ export function AcademicsOverviewView({
               {assignments.slice(0, 4).map((asg) => (
                 <div key={asg.id} className="flex items-start gap-3">
                   <div className="w-7 h-7 rounded-full bg-indigo-50 text-indigo-700 font-semibold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
-                    {asg.subject[0]}
+                    {asg.subject ? asg.subject[0] : 'A'}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold text-slate-800 truncate">{asg.title}</p>
-                    <p className="text-[11px] text-rose-500 font-medium">{asg.relativeDue}</p>
+                    <p className="text-[11px] text-rose-500 font-medium">{asg.relativeDue || asg.dueDate}</p>
                   </div>
                 </div>
               ))}
@@ -116,7 +179,7 @@ export function AcademicsOverviewView({
               <h3 className="font-semibold text-slate-900 text-base">Latest notices</h3>
               <button
                 onClick={() => onNavigate('notices')}
-                className="text-xs text-indigo-600 hover:underline"
+                className="text-xs text-indigo-600 hover:underline cursor-pointer"
               >
                 All notices
               </button>
