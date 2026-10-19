@@ -492,9 +492,9 @@ export function useAcademicsWorkspace() {
     isUnread?: boolean;
     attachments?: Array<{
       filename: string;
-      mimeType: string;
-      size: number;
-      sizeFormatted: string;
+      mimeType?: string;
+      size?: number;
+      sizeFormatted?: string;
     }>;
     gmailUrl?: string;
     extractedData?: {
@@ -542,7 +542,9 @@ export function useAcademicsWorkspace() {
             const category: CampusNotice['category'] =
               u.urgency === 'HIGH' ? 'Circular' : 'Academic';
 
-            const rawGmailId = u.id.replace(/^gmail-/, '');
+            const userEmail = currentUserEmail || '';
+            const authUserQuery = userEmail ? `?authuser=${encodeURIComponent(userEmail)}` : '';
+            const cleanSearch = u.title.replace(/^Fwd:\s*/i, '').trim();
 
             return {
               id: u.id,
@@ -552,7 +554,9 @@ export function useAcademicsWorkspace() {
               summary: u.body || u.summary,
               fullBody: u.body || u.summary,
               sender: u.sender,
-              gmailUrl: u.gmailUrl || `https://mail.google.com/mail/#all/${rawGmailId}`,
+              gmailUrl:
+                u.gmailUrl ||
+                `https://mail.google.com/mail/${authUserQuery}#search/${encodeURIComponent(cleanSearch)}`,
               attachments: u.attachments || [],
               isImportant: u.urgency === 'HIGH',
               isUnread: Boolean(u.isUnread),
@@ -662,7 +666,7 @@ export function useAcademicsWorkspace() {
       console.warn('handleFullInboxSync encountered an error:', err);
       return { success: false, scanned: 0, unread: 0, itemsCount: 0 };
     }
-  }, [setNotices, setTasks, setEvents]);
+  }, [setNotices, setTasks, setEvents, currentUserEmail]);
 
 // 8. Fully Automated Sync Daemon (No synchronous setState in effect body)
   useEffect(() => {

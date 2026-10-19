@@ -46,9 +46,18 @@ export function NoticesView({
   const [rawText, setRawText] = useState('');
 
   const getGmailDeepLink = (notice: CampusNotice & { gmailUrl?: string }) => {
-    if (notice.gmailUrl) return notice.gmailUrl;
+    // 1. If an exact thread deep link without the invalid '/u/?' syntax exists, use it directly
+    if (notice.gmailUrl && !notice.gmailUrl.includes('/u/?')) {
+      return notice.gmailUrl;
+    }
+
+    // 2. Identify the real authorized campus email from PostgreSQL status
+    const connectedGmail = workspace.connectors?.find((c) => c.id === 'gmail')?.connectedAccount;
+    const targetEmail = connectedGmail || workspace.profile.email?.trim() || '';
+    const authUserQuery = targetEmail ? `?authuser=${encodeURIComponent(targetEmail)}` : '';
+
     const cleanSearch = notice.title.replace(/^Fwd:\s*/i, '').trim();
-    return `https://mail.google.com/mail/u/0/#search/${encodeURIComponent(cleanSearch)}`;
+    return `https://mail.google.com/mail/${authUserQuery}#search/${encodeURIComponent(cleanSearch)}`;
   };
 
   const handleNoticeClick = (notice: CampusNotice) => {
@@ -179,6 +188,19 @@ export function NoticesView({
 
         const targetGmailUrl = getGmailDeepLink(extNotice);
 
+        // Decode HTML entities (e.g. &#39; -> ')
+        const decodeHtml = (text: string) =>
+          text
+            .replace(/&#39;/g, "'")
+            .replace(/&quot;/g, '"')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&nbsp;/g, ' ');
+
+        const displayBody = decodeHtml(extNotice.fullBody || extNotice.summary || '');
+        const displayTitle = decodeHtml(extNotice.title || '');
+
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-100">
             <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl border border-slate-100 overflow-hidden max-h-[90vh] flex flex-col">
@@ -195,7 +217,7 @@ export function NoticesView({
                     </span>
                   </div>
                   <h3 className="font-bold text-slate-900 text-lg leading-snug">
-                    {extNotice.title}
+                    {displayTitle}
                   </h3>
                 </div>
                 <button
@@ -217,18 +239,18 @@ export function NoticesView({
                     <span>Source: Ingested Campus Notice / Email</span>
                     {extNotice.sender && (
                       <span className="font-medium text-slate-600 truncate max-w-55">
-                        From: {extNotice.sender}
+                        From: {decodeHtml(extNotice.sender)}
                       </span>
                     )}
                   </div>
                   
-                  {/* Full Body with Line-Breaks Preserved */}
+                  {/* Clean Decoded Body with Preserved Line Breaks */}
                   <div className="whitespace-pre-wrap font-sans text-xs text-slate-700 leading-relaxed max-h-72 overflow-y-auto pr-1">
-                    {extNotice.fullBody || extNotice.summary}
+                    {displayBody}
                   </div>
                 </div>
 
-                {/* Attachments Section (Gmail Style) */}
+                {/* Attachments Section */}
                 {extNotice.attachments && extNotice.attachments.length > 0 && (
                   <div className="space-y-2 pt-1">
                     <div className="flex items-center justify-between">
@@ -249,7 +271,6 @@ export function NoticesView({
                           className="flex items-center gap-3 p-2.5 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 rounded-xl transition-all group cursor-pointer"
                           title="Click to view and download in Gmail"
                         >
-                          {/* File Type Pill */}
                           <div className="w-9 h-11 bg-rose-50 border border-rose-200 rounded-lg flex flex-col items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
                             <span className="text-[9px] font-black uppercase text-rose-600 tracking-tighter">
                               {att.filename.split('.').pop() || 'PDF'}
