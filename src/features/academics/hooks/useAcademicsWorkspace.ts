@@ -484,11 +484,19 @@ export function useAcademicsWorkspace() {
     id: string;
     title: string;
     summary: string;
+    body?: string;
     sender?: string;
     receivedAt?: string;
     actionType?: 'NOTICE' | 'TASK' | 'EVENT' | 'TIMETABLE_UPDATE';
     urgency?: 'HIGH' | 'NORMAL';
     isUnread?: boolean;
+    attachments?: Array<{
+      filename: string;
+      mimeType: string;
+      size: number;
+      sizeFormatted: string;
+    }>;
+    gmailUrl?: string;
     extractedData?: {
       dueDate?: string;
       venue?: string;
@@ -534,12 +542,18 @@ export function useAcademicsWorkspace() {
             const category: CampusNotice['category'] =
               u.urgency === 'HIGH' ? 'Circular' : 'Academic';
 
+            const rawGmailId = u.id.replace(/^gmail-/, '');
+
             return {
               id: u.id,
               title: u.title,
               category,
               dateStr,
-              summary: u.summary,
+              summary: u.body || u.summary,
+              fullBody: u.body || u.summary,
+              sender: u.sender,
+              gmailUrl: u.gmailUrl || `https://mail.google.com/mail/#all/${rawGmailId}`,
+              attachments: u.attachments || [],
               isImportant: u.urgency === 'HIGH',
               isUnread: Boolean(u.isUnread),
             };

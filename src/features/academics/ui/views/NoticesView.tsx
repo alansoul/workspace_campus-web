@@ -45,8 +45,9 @@ export function NoticesView({
   // WhatsApp Raw Text State
   const [rawText, setRawText] = useState('');
 
-  const getGmailDeepLink = (noticeTitle: string) => {
-    const cleanSearch = noticeTitle.replace(/^Fwd:\s*/i, '').trim();
+  const getGmailDeepLink = (notice: CampusNotice & { gmailUrl?: string }) => {
+    if (notice.gmailUrl) return notice.gmailUrl;
+    const cleanSearch = notice.title.replace(/^Fwd:\s*/i, '').trim();
     return `https://mail.google.com/mail/u/0/#search/${encodeURIComponent(cleanSearch)}`;
   };
 
@@ -148,7 +149,7 @@ export function NoticesView({
                   Click to read email &rarr;
                 </span>
                 <a
-                  href={getGmailDeepLink(notice.title)}
+                  href={getGmailDeepLink(notice)}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
@@ -163,61 +164,137 @@ export function NoticesView({
       </div>
 
       {/* Option 1: In-App Email / Notice Reader Modal */}
-      {selectedNotice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-100">
-          <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl border border-slate-100 overflow-hidden space-y-4 p-6">
-            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700">
-                    {selectedNotice.category || 'Academic'}
-                  </span>
-                  <span className="text-xs text-slate-400">{selectedNotice.dateStr}</span>
+      {selectedNotice && (() => {
+        const extNotice = selectedNotice as CampusNotice & {
+          fullBody?: string;
+          sender?: string;
+          gmailUrl?: string;
+          attachments?: Array<{
+            filename: string;
+            mimeType?: string;
+            size?: number;
+            sizeFormatted?: string;
+          }>;
+        };
+
+        const targetGmailUrl = getGmailDeepLink(extNotice);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-100">
+            <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl border border-slate-100 overflow-hidden max-h-[90vh] flex flex-col">
+              
+              {/* Header */}
+              <div className="p-6 pb-4 border-b border-slate-100 flex items-start justify-between gap-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100 uppercase tracking-wider">
+                      {extNotice.category || 'Academic'}
+                    </span>
+                    <span className="text-xs text-slate-400 font-medium">
+                      {extNotice.dateStr}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-slate-900 text-lg leading-snug">
+                    {extNotice.title}
+                  </h3>
                 </div>
-                <h3 className="mt-2 text-lg font-bold text-slate-900 leading-snug">
-                  {selectedNotice.title}
-                </h3>
+                <button
+                  type="button"
+                  onClick={() => setSelectedNotice(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                  aria-label="Close modal"
+                >
+                  ✕
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedNotice(null)}
-                className="text-slate-400 hover:text-slate-600 text-xl font-bold cursor-pointer p-1"
-              >
-                ✕
-              </button>
-            </div>
 
-            <div className="max-h-[50vh] overflow-y-auto bg-slate-50/70 p-4 rounded-xl border border-slate-100 space-y-2">
-              <span className="text-[10px] font-mono text-slate-400 block border-b border-slate-200/60 pb-1">
-                Source: Ingested Campus Notice / Email
-              </span>
-              <p className="text-sm leading-relaxed text-slate-800 whitespace-pre-wrap font-sans">
-                {selectedNotice.summary}
-              </p>
-            </div>
+              {/* Email Content & Attachments Container */}
+              <div className="p-6 overflow-y-auto space-y-4 text-xs">
+                
+                {/* Source & Sender Header */}
+                <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/60 space-y-3">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 border-b border-slate-200/50 pb-2">
+                    <span>Source: Ingested Campus Notice / Email</span>
+                    {extNotice.sender && (
+                      <span className="font-medium text-slate-600 truncate max-w-55">
+                        From: {extNotice.sender}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Full Body with Line-Breaks Preserved */}
+                  <div className="whitespace-pre-wrap font-sans text-xs text-slate-700 leading-relaxed max-h-72 overflow-y-auto pr-1">
+                    {extNotice.fullBody || extNotice.summary}
+                  </div>
+                </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setSelectedNotice(null)}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
-              >
-                Close
-              </button>
+                {/* Attachments Section (Gmail Style) */}
+                {extNotice.attachments && extNotice.attachments.length > 0 && (
+                  <div className="space-y-2 pt-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-slate-800">
+                        {extNotice.attachments.length}{' '}
+                        {extNotice.attachments.length === 1 ? 'Attachment' : 'Attachments'}
+                      </p>
+                      <span className="text-[10px] text-slate-400">Scanned by Gmail</span>
+                    </div>
 
-              <a
-                href={getGmailDeepLink(selectedNotice.title)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-colors cursor-pointer"
-              >
-                <span>Open in Gmail</span>
-                <span>↗</span>
-              </a>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {extNotice.attachments.map((att, idx) => (
+                        <a
+                          key={idx}
+                          href={targetGmailUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 p-2.5 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 rounded-xl transition-all group cursor-pointer"
+                          title="Click to view and download in Gmail"
+                        >
+                          {/* File Type Pill */}
+                          <div className="w-9 h-11 bg-rose-50 border border-rose-200 rounded-lg flex flex-col items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                            <span className="text-[9px] font-black uppercase text-rose-600 tracking-tighter">
+                              {att.filename.split('.').pop() || 'PDF'}
+                            </span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-slate-800 truncate group-hover:text-indigo-600 transition-colors">
+                              {att.filename}
+                            </p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              {att.sizeFormatted || 'Document'}
+                            </p>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 px-6 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <button
+                  type="button"
+                  onClick={() => setSelectedNotice(null)}
+                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+
+                <a
+                  href={targetGmailUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                >
+                  <span>Open in Gmail</span>
+                  <span className="text-[13px] leading-none">↗</span>
+                </a>
+              </div>
+
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Modal with WhatsApp Ingestion & Manual Creation Tabs */}
       {isModalOpen && (
