@@ -787,6 +787,8 @@ export function useAcademicsWorkspace() {
     addCustomAttendanceSubject: courseworkModule.addCustomAttendanceSubject,
     deleteAttendanceSubject: courseworkModule.deleteAttendanceSubject,
     notices: filteredNotices,
+    markNoticeAsRead: courseworkModule.markNoticeAsRead,
+    handleCreateNotice: courseworkModule.handleCreateNotice,
 
     // Drive Files (Reactive to search query)
     driveFiles: filteredDriveFiles,
