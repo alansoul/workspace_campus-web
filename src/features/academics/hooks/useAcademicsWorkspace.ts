@@ -753,6 +753,7 @@ export function useAcademicsWorkspace() {
     attendance: courseworkModule.attendance,
     logAttendance: courseworkModule.logAttendance,
     addCustomAttendanceSubject: courseworkModule.addCustomAttendanceSubject,
+    deleteAttendanceSubject: courseworkModule.deleteAttendanceSubject,
     notices: filteredNotices,
     markNoticeAsRead: courseworkModule.markNoticeAsRead,
     handleCreateNotice: courseworkModule.handleCreateNotice,

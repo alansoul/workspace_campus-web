@@ -1,11 +1,18 @@
 'use client';
 
 import { useState } from 'react';
+import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { useAcademicsWorkspace } from '../../hooks/useAcademicsWorkspace';
 
 export function AttendanceView() {
-  const { attendance, logAttendance, addCustomAttendanceSubject } = useAcademicsWorkspace();
+  const {
+    attendance,
+    logAttendance,
+    addCustomAttendanceSubject,
+    deleteAttendanceSubject,
+  } = useAcademicsWorkspace();
 
+  const [activeMenuSubject, setActiveMenuSubject] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [subjectName, setSubjectName] = useState('');
@@ -21,13 +28,23 @@ export function AttendanceView() {
     setIsModalOpen(true);
   };
 
-  // Open modal to correct accidental clicks on an existing subject
+  // Open modal to update counts for an existing subject
   const handleOpenEdit = (sub: { subject: string; totalClasses: number; attended: number }) => {
     setIsEditMode(true);
     setSubjectName(sub.subject);
     setTotalClasses(sub.totalClasses.toString());
     setAttendedClasses(sub.attended.toString());
     setIsModalOpen(true);
+  };
+
+  const handleDelete = (name: string) => {
+    if (window.confirm(`Are you sure you want to delete "${name}" from your attendance tracker?`)) {
+      deleteAttendanceSubject?.(name);
+      if (isModalOpen && subjectName === name) {
+        setIsModalOpen(false);
+        setIsEditMode(false);
+      }
+    }
   };
 
   const handleSaveSubject = (e: React.FormEvent) => {
@@ -64,7 +81,7 @@ export function AttendanceView() {
         <button
           type="button"
           onClick={handleOpenAdd}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-sm transition-all cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-xs transition-all cursor-pointer"
         >
           <span className="text-base font-bold leading-none">+</span> Add Subject
         </button>
@@ -82,25 +99,14 @@ export function AttendanceView() {
               }`}
             >
               <div className="flex items-start justify-between gap-4 mb-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-slate-900 text-base">{sub.subject}</h3>
-                    {/* ✏️ Direct Edit / Undo Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEdit(sub)}
-                      className="text-xs px-2 py-0.5 rounded-md bg-slate-100 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 transition-colors font-medium cursor-pointer"
-                      title="Correct Attendance Count"
-                    >
-                      ✏️ Edit
-                    </button>
-                  </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-slate-900 text-base truncate">{sub.subject}</h3>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {sub.attended} attended / {sub.totalClasses} total classes
                   </p>
                 </div>
 
-                <div className="text-right">
+                <div className="flex items-center gap-2.5">
                   <span
                     className={`text-2xl font-black ${
                       isWarning ? 'text-amber-600' : 'text-indigo-600'
@@ -108,6 +114,58 @@ export function AttendanceView() {
                   >
                     {sub.attendancePct}%
                   </span>
+
+                  {/* Three Dots Action Menu */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveMenuSubject(
+                          activeMenuSubject === sub.subject ? null : sub.subject,
+                        )
+                      }
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                      title="Course actions"
+                      aria-label="Course actions"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {activeMenuSubject === sub.subject && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-20"
+                          onClick={() => setActiveMenuSubject(null)}
+                        />
+                        <div className="absolute right-0 mt-1 w-44 rounded-xl bg-white border border-slate-200/90 shadow-xl z-30 py-1 text-xs animate-in fade-in zoom-in-95 duration-100">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveMenuSubject(null);
+                              handleOpenEdit(sub);
+                            }}
+                            className="w-full px-3 py-2 text-left text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer font-medium transition-colors"
+                          >
+                            <Pencil className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Update count</span>
+                          </button>
+                          <div className="my-1 border-t border-slate-100" />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveMenuSubject(null);
+                              handleDelete(sub.subject);
+                            }}
+                            className="w-full px-3 py-2 text-left text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-medium transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                            <span>Delete course</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -157,7 +215,7 @@ export function AttendanceView() {
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <h3 className="font-bold text-slate-900 text-lg">
-                {isEditMode ? `Correct Count: ${subjectName}` : 'Add Course to Tracker'}
+                {isEditMode ? `Update Count: ${subjectName}` : 'Add Course to Tracker'}
               </h3>
               <button
                 type="button"
@@ -189,7 +247,7 @@ export function AttendanceView() {
                 />
                 {isEditMode && (
                   <p className="text-[11px] text-slate-400 mt-1">
-                    Subject name is locked while correcting counts.
+                    Subject name is locked while updating counts.
                   </p>
                 )}
               </div>
@@ -222,23 +280,37 @@ export function AttendanceView() {
                 </div>
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setIsEditMode(false);
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-colors cursor-pointer"
-                >
-                  {isEditMode ? 'Save Count' : 'Add Subject'}
-                </button>
+              <div className="pt-2 flex items-center justify-between">
+                {isEditMode ? (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(subjectName)}
+                    className="px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Delete Course
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setIsEditMode(false);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-colors cursor-pointer"
+                  >
+                    {isEditMode ? 'Save Count' : 'Add Subject'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

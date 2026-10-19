@@ -366,6 +366,16 @@ export function useAcademicsCoursework(authorName: string = 'Campus User') {
     [],
   );
 
+  const deleteAttendanceSubject = (subjectName: string) => {
+    setAttendance((prev) => {
+      const updated = prev.filter((item) => item.subject !== subjectName);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('campus_attendance', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  };
+
   // Notice Handlers
   const markNoticeAsRead = useCallback((noticeId: string) => {
     setNotices((prev) => {
@@ -591,6 +601,7 @@ export function useAcademicsCoursework(authorName: string = 'Campus User') {
     attendance,
     logAttendance,
     addCustomAttendanceSubject,
+    deleteAttendanceSubject,
     notices,
     setNotices,
     markNoticeAsRead,
