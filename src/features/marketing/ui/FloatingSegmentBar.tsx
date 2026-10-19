@@ -46,10 +46,13 @@ export function FloatingSegmentBar({
 
     return () => observer.disconnect();
   }, []);
+  // Toggle flag: flip to true whenever you want to restore the pricing tab
+  const SHOW_PRICING = false;
+
   const tabs = [
     { id: 'included', label: "What's included" },
     { id: 'features', label: 'Premium features' },
-    { id: 'pricing', label: 'Plans and pricing' },
+    ...(SHOW_PRICING ? [{ id: 'pricing', label: 'Plans and pricing' }] : []),
     { id: 'faq', label: 'FAQ' },
   ];
 

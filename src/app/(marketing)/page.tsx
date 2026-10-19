@@ -11,7 +11,15 @@ import { PricingMatrix } from '@/features/marketing/ui/PricingMatrix';
 import { FaqSection } from '@/features/marketing/ui/FaqSection';
 import { MegaFooter } from '@/features/marketing/ui/MegaFooter';
 
-const SECTION_IDS = ['included', 'features', 'pricing', 'faq'] as const;
+// Toggle flag: set to true whenever you want to restore the pricing section
+const SHOW_PRICING = false;
+
+const SECTION_IDS = (
+  SHOW_PRICING
+    ? ['included', 'features', 'pricing', 'faq']
+    : ['included', 'features', 'faq']
+) as readonly string[];
+
 const NAVBAR_OFFSET = 130;
 const ACTIVATION_OFFSET = 194;
 const SCROLL_FALLBACK_MS = 1500;
@@ -165,9 +173,11 @@ export default function MarketingPage() {
         <InteractivePreview />
       </section>
 
-      <section id="pricing" className="scroll-mt-32.5">
-        <PricingMatrix />
-      </section>
+      {SHOW_PRICING && (
+        <section id="pricing" className="scroll-mt-32.5">
+          <PricingMatrix />
+        </section>
+      )}
 
       <section id="faq" className="scroll-mt-32.5">
         <FaqSection />
