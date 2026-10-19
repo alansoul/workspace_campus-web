@@ -1,20 +1,63 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import type { PracticalExperiment } from '../../types/academics.types';
 import { useAcademicsWorkspace } from '../../hooks/useAcademicsWorkspace';
 
 export function PracticalsView() {
-  const { practicals, markPracticalComplete, handleCreatePractical, isAdmin } =
-    useAcademicsWorkspace();
+  const {
+    practicals,
+    markPracticalComplete,
+    handleCreatePractical,
+    handleUpdatePractical,
+    handleDeletePractical,
+    isAdmin,
+  } = useAcademicsWorkspace();
 
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingPracId, setEditingPracId] = useState<string | null>(null);
+
+  // Form State
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('');
   const [labName, setLabName] = useState('Lab 1');
   const [faculty, setFaculty] = useState('');
   const [dueInDaysText, setDueInDaysText] = useState('Due in 3 days');
   const [tagInput, setTagInput] = useState('');
+
+  const handleOpenAdd = () => {
+    setEditingPracId(null);
+    setTitle('');
+    setSubject('');
+    setLabName('Lab 1');
+    setFaculty('');
+    setDueInDaysText('Due in 3 days');
+    setTagInput('');
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (prac: PracticalExperiment) => {
+    setEditingPracId(prac.id);
+    setTitle(prac.title);
+    setSubject(prac.subject);
+    setLabName(prac.labName || prac.labRoom || prac.lab || 'Lab 1');
+    setFaculty(prac.faculty || '');
+    setDueInDaysText(prac.dueInDaysText || prac.recordDueDate || 'Due in 3 days');
+    setTagInput(prac.tags ? prac.tags.join(', ') : '');
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = (id: string, pracTitle: string) => {
+    if (window.confirm(`Are you sure you want to remove "${pracTitle}"?`)) {
+      handleDeletePractical?.(id);
+      if (isModalOpen && editingPracId === id) {
+        setIsModalOpen(false);
+        setEditingPracId(null);
+      }
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,20 +68,23 @@ export function PracticalsView() {
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
 
-    handleCreatePractical?.({
+    const payload = {
       title: title.trim(),
       subject: subject.trim(),
       labName,
       faculty: faculty.trim() || 'Course Instructor',
       dueInDaysText: dueInDaysText.trim() || 'Due in 3 days',
       tags: tags.length > 0 ? tags : ['Lab Manual', 'Source Code'],
-    });
+    };
 
-    setTitle('');
-    setSubject('');
-    setFaculty('');
-    setTagInput('');
+    if (editingPracId) {
+      handleUpdatePractical?.(editingPracId, payload);
+    } else {
+      handleCreatePractical?.(payload);
+    }
+
     setIsModalOpen(false);
+    setEditingPracId(null);
   };
 
   return (
@@ -55,11 +101,10 @@ export function PracticalsView() {
           </p>
         </div>
 
-        {/* Admin-only Add Practical Button */}
         {isAdmin && (
           <button
             type="button"
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenAdd}
             className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl shadow-xs transition-all cursor-pointer"
           >
             <span className="text-base font-bold leading-none">+</span> Add Practical
@@ -72,16 +117,64 @@ export function PracticalsView() {
         {practicals.map((prac) => (
           <div
             key={prac.id}
-            className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4"
+            className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4 relative"
           >
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs text-slate-400">
                 <span className="font-semibold text-indigo-600">{prac.subject}</span>
-                <span>{prac.dueInDaysText || prac.dueText || prac.dueDate || 'Due soon'}</span>
+                <div className="flex items-center gap-2">
+                  <span>{prac.dueInDaysText || prac.recordDueDate || 'Due soon'}</span>
+
+                  {isAdmin && (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveMenuId(activeMenuId === prac.id ? null : prac.id)
+                        }
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                      >
+                        <MoreVertical className="w-3.5 h-3.5" />
+                      </button>
+
+                      {activeMenuId === prac.id && (
+                        <>
+                          <div className="fixed inset-0 z-20" onClick={() => setActiveMenuId(null)} />
+                          <div className="absolute right-0 mt-1 w-44 rounded-xl bg-white border border-slate-200/90 shadow-xl z-30 py-1 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                handleOpenEdit(prac);
+                              }}
+                              className="w-full px-3 py-2 text-left text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer font-medium"
+                            >
+                              <Pencil className="w-3.5 h-3.5 text-slate-500" />
+                              <span>Update Practical</span>
+                            </button>
+                            <div className="my-1 border-t border-slate-100" />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveMenuId(null);
+                                handleDelete(prac.id, prac.title);
+                              }}
+                              className="w-full px-3 py-2 text-left text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-medium"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                              <span>Delete Practical</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
+
               <h4 className="font-bold text-slate-900 text-base">{prac.title}</h4>
               <p className="text-xs text-slate-500">
-                {prac.labName || prac.lab || 'Lab 1'} {prac.faculty ? `· ${prac.faculty}` : ''}
+                {prac.labName || prac.labRoom || 'Lab 1'} {prac.faculty ? `· ${prac.faculty}` : ''}
               </p>
 
               {prac.tags && prac.tags.length > 0 && (
@@ -127,15 +220,20 @@ export function PracticalsView() {
         ))}
       </div>
 
-      {/* Admin Add Practical Modal */}
+      {/* Admin Add/Edit Modal */}
       {isModalOpen && isAdmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 text-lg">Add Lab Practical</h3>
+              <h3 className="font-bold text-slate-900 text-lg">
+                {editingPracId ? 'Update Lab Practical' : 'Add Lab Practical'}
+              </h3>
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingPracId(null);
+                }}
                 className="text-slate-400 hover:text-slate-600 text-xl font-bold cursor-pointer"
               >
                 ✕
@@ -215,20 +313,37 @@ export function PracticalsView() {
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs cursor-pointer"
-                >
-                  Create Practical
-                </button>
+              <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+                {editingPracId ? (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(editingPracId, title)}
+                    className="px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Delete Practical
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setEditingPracId(null);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs cursor-pointer"
+                  >
+                    {editingPracId ? 'Save Changes' : 'Create Practical'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

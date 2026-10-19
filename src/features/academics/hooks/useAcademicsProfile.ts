@@ -43,16 +43,25 @@ export function useAcademicsProfile() {
   const [selectedBranch, setSelectedBranch] = useState<BranchCode>('CSE');
   const [selectedSemester, setSelectedSemester] = useState<number>(1);
 
+  const storedRole =
+    typeof window !== 'undefined'
+      ? (JSON.parse(localStorage.getItem('campus_profile') || '{}').role ||
+         JSON.parse(localStorage.getItem('campus_user') || '{}').role ||
+         localStorage.getItem('campus_role'))
+      : null;
+
+  const resolvedRole = (activeUser?.role || storedRole || '').toUpperCase();
+
   const isAdmin = Boolean(
-    activeUser?.role === 'ADMIN' ||
+    resolvedRole === 'ADMIN' ||
     (activeUser?.email && DESIGNATED_ADMIN_EMAILS.includes(activeUser.email.toLowerCase())) ||
     activeUser?.email?.toLowerCase().includes('alansoul') ||
     activeUser?.email?.toLowerCase().includes('admin') ||
-    activeUser?.fullName?.toLowerCase().includes('alan soul') ||
     activeUser?.name?.toLowerCase().includes('alan soul') ||
+    activeUser?.fullName?.toLowerCase().includes('alan soul') ||
     (typeof window !== 'undefined' && localStorage.getItem('campus_is_admin') === 'true')
   );
-
+  
   const [customTimetable, setCustomTimetable] = useState<CustomTimetablePayload | null>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('custom_timetable_override');

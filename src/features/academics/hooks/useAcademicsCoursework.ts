@@ -343,6 +343,87 @@ export function useAcademicsCoursework(authorName: string = 'Campus User') {
     [],
   );
 
+  const handleUpdatePractical = useCallback(
+    (
+      id: string,
+      updated: {
+        title: string;
+        subject: string;
+        labName?: string;
+        faculty?: string;
+        dueInDaysText?: string;
+        tags?: string[];
+      },
+    ) => {
+      setPracticals((prev) => {
+        const next = prev.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                title: updated.title,
+                subject: updated.subject,
+                labName: updated.labName || p.labName,
+                labRoom: updated.labName || p.labRoom,
+                faculty: updated.faculty || p.faculty,
+                dueInDaysText: updated.dueInDaysText || p.dueInDaysText,
+                recordDueDate: updated.dueInDaysText || p.recordDueDate,
+                tags: updated.tags || p.tags,
+              }
+            : p,
+        );
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('campus_practicals', JSON.stringify(next));
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
+  const handleDeletePractical = useCallback((id: string) => {
+    setPracticals((prev) => {
+      const next = prev.filter((p) => p.id !== id);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('campus_practicals', JSON.stringify(next));
+      }
+      return next;
+    });
+  }, []);
+
+  const handleUpdateExam = useCallback(
+    (
+      id: string,
+      updated: {
+        title: string;
+        subject: string;
+        type: ExamItem['type'];
+        dateStr: string;
+        timeStr: string;
+        room: string;
+        syllabus: string;
+      },
+    ) => {
+      setExams((prev) => {
+        const next = prev.map((ex) => (ex.id === id ? { ...ex, ...updated } : ex));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('campus_exams', JSON.stringify(next));
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
+  const handleDeleteExam = useCallback((id: string) => {
+    setExams((prev) => {
+      const next = prev.filter((ex) => ex.id !== id);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('campus_exams', JSON.stringify(next));
+      }
+      return next;
+    });
+  }, []);
+
   // Attendance Handlers
   const logAttendance = useCallback(async (subjectName: string, attended: boolean) => {
     setAttendance((prev) => {
@@ -639,8 +720,12 @@ export function useAcademicsCoursework(authorName: string = 'Campus User') {
     practicals,
     markPracticalComplete,
     handleCreatePractical,
+    handleUpdatePractical,
+    handleDeletePractical,
     exams,
     handleCreateExam,
+    handleUpdateExam,
+    handleDeleteExam,
     attendance,
     logAttendance,
     addCustomAttendanceSubject,
