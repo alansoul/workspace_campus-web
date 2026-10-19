@@ -145,13 +145,19 @@ export interface PracticalExperiment {
   subject: string;
   experimentNumber: number;
   title: string;
+  faculty?: string;
+  labName?: string;
   labRoom: string;
-  faculty: string;
+  lab?: string;
+  dueInDaysText?: string;
+  dueText?: string;
+  dueDate?: string;
   sessionDate: string;
   recordDueDate: string;
   relativeDue: string;
   tags: string[];
   completed: boolean;
+  manualUrl?: string;
 }
 
 export interface ExamItem {

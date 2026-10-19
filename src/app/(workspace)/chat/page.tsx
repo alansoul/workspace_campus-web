@@ -21,6 +21,7 @@ export default function ChatPage() {
       appIconSrc="/icons/northstar-circle-icon.svg"
       themeColor="#7C4DFF"
       previewImage="/illustrations/chat-preview.webp"
+      previewVideo="/videos/circle.mp4"
       previewGreeting="Hello, Team."
       transcriptSample={{
         title: '#hackathon-squad • Live Audio Huddle',

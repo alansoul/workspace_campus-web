@@ -26,7 +26,8 @@ export interface ProductLandingPageProps {
   appRoute: string;
   appIconSrc: string;
   themeColor: string;
-  previewImage: string;
+  previewImage?: string;
+  previewVideo?: string;
   previewGreeting: string;
   transcriptSample: {
     title: string;
@@ -46,6 +47,7 @@ export function ProductLandingPage({
   appIconSrc,
   themeColor,
   previewImage,
+  previewVideo,
   previewGreeting,
   transcriptSample,
   features,
@@ -165,23 +167,39 @@ export function ProductLandingPage({
                 </div>
               </div>
 
-              <div className="relative rounded-[28px] overflow-hidden border border-[#DADCE0] bg-white shadow-[0_16px_40px_rgba(0,0,0,0.08)]">
-                <div className="relative aspect-16/10 w-full overflow-hidden bg-slate-100">
-                  <Image
-                    src={previewImage}
-                    alt={appName}
-                    fill
-                    unoptimized
-                    className="object-cover object-center"
-                    priority
-                  />
-                  <div className="absolute inset-0 bg-linear-to-t from-black/50 via-transparent to-black/20" />
-
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-14 h-14 rounded-full bg-white/95 text-[#1A73E8] shadow-lg flex items-center justify-center backdrop-blur-xs transition hover:scale-105">
-                      <Play className="w-6 h-6 fill-current ml-0.5" />
+              <div className="relative rounded-[28px] overflow-hidden border border-[#DADCE0] bg-slate-900 shadow-[0_16px_40px_rgba(0,0,0,0.08)]">
+                <div className="relative aspect-16/10 w-full overflow-hidden bg-slate-900 flex items-center justify-center">
+                  {previewVideo ? (
+                    <video
+                      src={previewVideo}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                  ) : previewImage ? (
+                    <>
+                      <Image
+                        src={previewImage}
+                        alt={appName}
+                        fill
+                        unoptimized
+                        className="object-cover object-center"
+                        priority
+                      />
+                      <div className="absolute inset-0 bg-linear-to-t from-black/50 via-transparent to-black/20" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-14 h-14 rounded-full bg-white/95 text-[#1A73E8] shadow-lg flex items-center justify-center backdrop-blur-xs transition hover:scale-105">
+                          <Play className="w-6 h-6 fill-current ml-0.5" />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 text-xs">
+                      {appName} Preview
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="absolute bottom-4 left-4 sm:left-6 z-20 w-[84%] max-w-sm rounded-2xl bg-white/98 backdrop-blur-md border border-[#DADCE0] shadow-xl p-3.5 space-y-2">

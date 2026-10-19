@@ -766,6 +766,7 @@ export function useAcademicsWorkspace() {
     handleCreateAssignment: courseworkModule.handleCreateAssignment,
     practicals: filteredPracticals,
     markPracticalComplete: courseworkModule.markPracticalComplete,
+    handleCreatePractical: courseworkModule.handleCreatePractical,
     exams: filteredExams,
     handleCreateExam: courseworkModule.handleCreateExam,
     attendance: courseworkModule.attendance,

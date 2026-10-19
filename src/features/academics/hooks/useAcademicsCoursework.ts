@@ -254,6 +254,48 @@ export function useAcademicsCoursework(authorName: string = 'Campus User') {
     });
   }, []);
 
+  const handleCreatePractical = useCallback(
+    (newPractical: {
+      title: string;
+      subject: string;
+      labName?: string;
+      faculty?: string;
+      dueInDaysText?: string;
+      tags?: string[];
+    }) => {
+      const assignedLab = newPractical.labName || 'Lab 1';
+      const assignedDue = newPractical.dueInDaysText || 'Due in 3 days';
+      const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+      const item: PracticalExperiment = {
+        id: `prac-${Date.now()}`,
+        title: newPractical.title,
+        subject: newPractical.subject,
+        experimentNumber: 1,
+        labRoom: assignedLab,
+        labName: assignedLab,
+        lab: assignedLab,
+        faculty: newPractical.faculty || 'Faculty In-Charge',
+        sessionDate: today,
+        recordDueDate: assignedDue,
+        relativeDue: assignedDue,
+        dueInDaysText: assignedDue,
+        dueText: assignedDue,
+        tags: newPractical.tags || ['Lab Manual'],
+        completed: false,
+      };
+
+      setPracticals((prev) => {
+        const next = [item, ...prev];
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('campus_practicals', JSON.stringify(next));
+        }
+        return next;
+      });
+    },
+    [],
+  );
+
   // Exams
   const [exams, setExams] = useState<ExamItem[]>(() => {
     if (typeof window !== 'undefined') {
@@ -596,6 +638,7 @@ export function useAcademicsCoursework(authorName: string = 'Campus User') {
     handleCreateAssignment,
     practicals,
     markPracticalComplete,
+    handleCreatePractical,
     exams,
     handleCreateExam,
     attendance,
