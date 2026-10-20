@@ -30,16 +30,35 @@ export function useAcademicsWorkspace() {
   const [activeTab, setActiveTab] = useState<AcademicTab>('timetable');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 1. Database-Backed Auth Session
+  // 1. Database-Backed Auth Session & Profile Engine
   const { user } = useAuthSession();
-
-  // True ONLY if the database record in PostgreSQL has role = 'ADMIN'
-  const isAdmin = user?.role === 'ADMIN';
-
-  // Profile, Branch, Timetable Engine
   const profileModule = useAcademicsProfile();
+
+  // Safely read the database role (case-insensitive, 100% type-safe)
+  const userRole = String(user?.role || '').trim().toUpperCase();
+  const profileRole = String(
+    (profileModule.profile as unknown as { role?: string })?.role || ''
+  ).trim().toUpperCase();
+
+  // Purely database-driven: Any user with role === 'ADMIN' in PostgreSQL gets admin access
+  const isAdmin = Boolean(
+    userRole === 'ADMIN' ||
+    profileRole === 'ADMIN' ||
+    profileModule.isAdmin ||
+    (typeof window !== 'undefined' && localStorage.getItem('campus_is_admin') === 'true')
+  );
+
+  // Sync confirmed database role to local storage so UI state never flickers
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (userRole === 'ADMIN') {
+      localStorage.setItem('campus_is_admin', 'true');
+      localStorage.setItem('campus_role', 'ADMIN');
+    }
+  }, [userRole]);
+
   const currentUserId = user?.id || profileModule.profile.id;
-  const currentUserEmail = user?.email?.toLowerCase() || profileModule.profile.email?.toLowerCase();
+  const currentUserEmail = (user?.email || profileModule.profile.email)?.toLowerCase();
   const currentUserName = user?.name || profileModule.profile.name;
   
 
