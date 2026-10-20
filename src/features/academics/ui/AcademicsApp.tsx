@@ -24,6 +24,10 @@ import { AssignmentsView } from './views/AssignmentsView';
 import { NoticesView } from './views/NoticesView';
 import { CampusAiDrawer } from './components/CampusAiDrawer';
 import { CalendarView } from './views/CalendarView';
+// 🟢 ADD THESE THREE:
+import { PracticalsView } from './views/PracticalsView';
+import { ExamsView } from './views/ExamsView';
+import { ResourcesView } from './views/ResourcesView';
 
 export function AcademicsApp() {
   const {
@@ -71,8 +75,6 @@ export function AcademicsApp() {
     setIsUploadModalOpen,
     handleUploadFile,
     assignments,
-    practicals,
-    markPracticalComplete,
 
     // Assessments & Attendance
     exams,
@@ -93,10 +95,6 @@ export function AcademicsApp() {
     addTask,
     deleteTask,
     toggleTaskCompletion,
-
-    // Directory & Campus Help
-    facultyDirectory,
-    lostItems,
 
     // MCP Connectors & AI Drawer
     connectors,
@@ -647,125 +645,10 @@ export function AcademicsApp() {
           {activeTab === 'assignments' && <AssignmentsView />}
 
           {/* TAB 10: Practicals */}
-          {activeTab === 'practicals' && (
-            <div className="space-y-6">
-              <div>
-                <p className="text-xs font-semibold tracking-wider text-indigo-600 uppercase">
-                  Labs
-                </p>
-                <h2 className="text-3xl font-bold text-slate-900 tracking-tight mt-0.5">
-                  Practicals
-                </h2>
-                <p className="text-sm text-slate-500 mt-0.5">
-                  Experiments, lab manuals and record submissions.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {practicals.map((prac) => (
-                  <div
-                    key={prac.id}
-                    className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs space-y-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-indigo-600">
-                        {prac.subject} · Exp {prac.experimentNumber}
-                      </span>
-                      <span className="text-xs text-slate-400">{prac.relativeDue}</span>
-                    </div>
-
-                    <h3 className="font-semibold text-slate-900 text-base">{prac.title}</h3>
-                    <p className="text-xs text-slate-500">
-                      {prac.labRoom} · {prac.faculty}
-                    </p>
-
-                    <div className="flex flex-wrap gap-1.5">
-                      {prac.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-[10px] bg-slate-50 border border-slate-100 px-2 py-0.5 rounded text-slate-600"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                      <button type="button" className="text-xs font-medium text-slate-600 hover:text-slate-900 cursor-pointer">
-                        📖 Lab manual
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => markPracticalComplete(prac.id)}
-                        className={`text-xs font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer ${
-                          prac.completed
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                        }`}
-                      >
-                        {prac.completed ? '✓ Completed' : 'Mark completed'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {activeTab === 'practicals' && <PracticalsView />}
 
           {/* TAB 11: Exams */}
-          {activeTab === 'exams' && (
-            <div className="space-y-6">
-              <div>
-                <p className="text-xs font-semibold tracking-wider text-indigo-600 uppercase">
-                  Assessments
-                </p>
-                <h2 className="text-3xl font-bold text-slate-900 tracking-tight mt-0.5">
-                  Exams
-                </h2>
-                <p className="text-sm text-slate-500 mt-0.5">
-                  Your examination schedule and syllabus for each paper.
-                </p>
-              </div>
-
-              {exams.find((e) => e.isNextUp) && (
-                <div className="bg-indigo-600 text-white rounded-3xl p-6 shadow-md shadow-indigo-100 space-y-2">
-                  <span className="text-[10px] font-bold tracking-wider uppercase bg-white/20 px-2.5 py-1 rounded-md">
-                    Next up · In 2 days
-                  </span>
-                  <h3 className="text-xl font-bold">Data Structures quiz 3</h3>
-                  <p className="text-xs text-indigo-100">
-                    17 Oct 2026 · 10:00 – 10:45 · Room 204
-                  </p>
-                  <p className="text-xs text-indigo-200 pt-1">Syllabus: Unit 3 — Trees & heaps</p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {exams.map((ex) => (
-                  <div
-                    key={ex.id}
-                    className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">
-                        {ex.type}
-                      </span>
-                      <span className="text-xs text-slate-400">{ex.relativeNotice}</span>
-                    </div>
-
-                    <h4 className="font-semibold text-slate-900 text-base">{ex.title}</h4>
-                    <p className="text-xs text-slate-500">{ex.subject}</p>
-                    <p className="text-xs text-slate-400">
-                      {ex.timeStr} · {ex.room}
-                    </p>
-                    <p className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      {ex.syllabus}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {activeTab === 'exams' && <ExamsView />}
 
           {/* TAB 12: Notices */}
           {activeTab === 'notices' && (
@@ -778,73 +661,7 @@ export function AcademicsApp() {
           )}
 
           {/* TAB 13: Resources & Faculty Directory */}
-          {activeTab === 'resources' && (
-            <div className="space-y-8">
-              <div>
-                <p className="text-xs font-semibold tracking-wider text-indigo-600 uppercase">
-                  Campus
-                </p>
-                <h2 className="text-3xl font-bold text-slate-900 tracking-tight mt-0.5">
-                  Resources
-                </h2>
-                <p className="text-sm text-slate-500 mt-0.5">
-                  Portals, people and help — all in one place.
-                </p>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-slate-900 text-lg mb-4">Faculty directory</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {facultyDirectory.map((fac) => (
-                    <div
-                      key={fac.id}
-                      className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs space-y-2"
-                    >
-                      <h4 className="font-semibold text-slate-900 text-sm">{fac.name}</h4>
-                      <p className="text-xs text-slate-400">
-                        {fac.department} · {fac.cabin}
-                      </p>
-                      <p className="text-[11px] text-slate-500">Hours: {fac.officeHours}</p>
-                      <a
-                        href={`mailto:${fac.email}`}
-                        className="inline-block text-xs text-indigo-600 hover:underline"
-                      >
-                        ✉ {fac.email}
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-slate-900 text-lg mb-4">Lost & found</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {lostItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between"
-                    >
-                      <div>
-                        <p className="text-xs font-semibold text-slate-900">{item.item}</p>
-                        <p className="text-[11px] text-slate-400">
-                          {item.location} · {item.timeAgo}
-                        </p>
-                      </div>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          item.status === 'Found'
-                            ? 'bg-emerald-50 text-emerald-600'
-                            : 'bg-amber-50 text-amber-700'
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+          {activeTab === 'resources' && <ResourcesView />}
 
           {/* TAB 14: MCP & Plugins */}
           {activeTab === 'plugins' && (
