@@ -64,8 +64,19 @@ export function useAcademicsWorkspace() {
   const currentUserEmail = (user?.email || profileModule.profile.email)?.toLowerCase();
   const currentUserName = user?.name || profileModule.profile.name;
 
+  // 1. Read universityId synchronously from localStorage on initial render to prevent tick-0 null mismatch
+  const cachedUniId = typeof window !== 'undefined' ? localStorage.getItem('campus_university_id') : null;
+  const currentUniversityId = user?.universityId || cachedUniId || null;
+
+  // Persist universityId to cache whenever user session updates
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (user?.universityId) {
+      localStorage.setItem('campus_university_id', user.universityId);
+    }
+  }, [user?.universityId]);
+
   // 2. Coursework, Attendance, Exams, Tasks, Drive (Scoped Strictly by University)
-  const currentUniversityId = user?.universityId || null;
   const courseworkModule = useAcademicsCoursework(currentUserName, currentUniversityId);
   const { setNotices, setTasks } = courseworkModule;
 

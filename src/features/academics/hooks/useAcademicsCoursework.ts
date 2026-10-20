@@ -31,58 +31,107 @@ export function useAcademicsCoursework(
   const storagePrefix = universityId ? `campus_${universityId}` : 'campus_default';
   const isCustomUniversity = Boolean(universityId);
 
-  // 1. Assignments State (New institutions start clean: [])
+  // 1. Assignments
   const [assignments, setAssignments] = useState<AssignmentItem[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(`${storagePrefix}_assignments`);
       if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {}
+        try { return JSON.parse(saved); } catch {}
       }
     }
     return isCustomUniversity ? [] : INITIAL_ASSIGNMENTS;
   });
   const [assignmentFilter, setAssignmentFilter] = useState<AssignmentStatus>('All');
 
-  // 2. Attendance State
+  // 2. Attendance
   const [attendance, setAttendance] = useState<AttendanceSubject[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(`${storagePrefix}_attendance`);
       if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {}
+        try { return JSON.parse(saved); } catch {}
       }
     }
     return isCustomUniversity ? [] : INITIAL_ATTENDANCE;
   });
 
-  // 3. Notices State
+  // 3. Notices
   const [notices, setNotices] = useState<CampusNotice[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(`${storagePrefix}_notices`);
       if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {}
+        try { return JSON.parse(saved); } catch {}
       }
     }
     return isCustomUniversity ? [] : INITIAL_NOTICES;
   });
 
-  // 4. Drive Files State
+  // 4. Drive Files
   const [driveFiles, setDriveFiles] = useState<DriveFile[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(`${storagePrefix}_files`);
       if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {}
+        try { return JSON.parse(saved); } catch {}
       }
     }
     return isCustomUniversity ? [] : INITIAL_FILES;
   });
+
+  // 5. Practicals (Moved to top so setPracticals exists before readStorage)
+  const [practicals, setPracticals] = useState<PracticalExperiment[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`${storagePrefix}_practicals`);
+      if (saved) {
+        try { return JSON.parse(saved); } catch {}
+      }
+    }
+    return isCustomUniversity ? [] : INITIAL_PRACTICALS;
+  });
+
+  // 6. Exams (Moved to top so setExams exists before readStorage)
+  const [exams, setExams] = useState<ExamItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`${storagePrefix}_exams`);
+      if (saved) {
+        try { return JSON.parse(saved); } catch {}
+      }
+    }
+    return isCustomUniversity ? [] : INITIAL_EXAMS;
+  });
+
+  // 7. Tasks (Moved to top so setTasks exists before readStorage)
+  const [tasks, setTasks] = useState<AcademicTask[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`${storagePrefix}_tasks`);
+      if (saved) {
+        try { return JSON.parse(saved); } catch {}
+      }
+    }
+    return isCustomUniversity ? [] : INITIAL_TASKS;
+  });
+
+  // Synchronize state from localStorage whenever storagePrefix resolves or changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const readStorage = <T>(key: string, setter: React.Dispatch<React.SetStateAction<T>>, fallback: T) => {
+      const raw = localStorage.getItem(`${storagePrefix}_${key}`);
+      if (raw) {
+        try {
+          setter(JSON.parse(raw));
+          return;
+        } catch {}
+      }
+      setter(fallback);
+    };
+
+    readStorage('assignments', setAssignments, isCustomUniversity ? [] : INITIAL_ASSIGNMENTS);
+    readStorage('attendance', setAttendance, isCustomUniversity ? [] : INITIAL_ATTENDANCE);
+    readStorage('notices', setNotices, isCustomUniversity ? [] : INITIAL_NOTICES);
+    readStorage('files', setDriveFiles, isCustomUniversity ? [] : INITIAL_FILES);
+    readStorage('practicals', setPracticals, isCustomUniversity ? [] : INITIAL_PRACTICALS);
+    readStorage('exams', setExams, isCustomUniversity ? [] : INITIAL_EXAMS);
+    readStorage('tasks', setTasks, isCustomUniversity ? [] : INITIAL_TASKS);
+  }, [storagePrefix, isCustomUniversity]);
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
@@ -102,48 +151,54 @@ export function useAcademicsCoursework(
 
         if (!isMounted) return;
 
-        // Drive Notes: Set database result directly (even if [] for new universities)
-        if (backendNotes.status === 'fulfilled') {
-          const serverNotes = Array.isArray(backendNotes.value) ? backendNotes.value : [];
-          if (isCustomUniversity || serverNotes.length > 0) {
-            setDriveFiles(serverNotes);
-            if (typeof window !== 'undefined') {
-              localStorage.setItem(`${storagePrefix}_files`, JSON.stringify(serverNotes));
-            }
+        // Drive Notes: Only merge if the server actually returned items
+        if (backendNotes.status === 'fulfilled' && Array.isArray(backendNotes.value) && backendNotes.value.length > 0) {
+          setDriveFiles(backendNotes.value);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(`${storagePrefix}_files`, JSON.stringify(backendNotes.value));
           }
         }
 
-        // Notices
-        if (backendNotices.status === 'fulfilled') {
-          const serverNotices = Array.isArray(backendNotices.value) ? backendNotices.value : [];
-          if (isCustomUniversity || serverNotices.length > 0) {
-            setNotices(serverNotices);
-            if (typeof window !== 'undefined') {
-              localStorage.setItem(`${storagePrefix}_notices`, JSON.stringify(serverNotices));
-            }
+        // Notices: Only merge if the server actually returned items
+        if (backendNotices.status === 'fulfilled' && Array.isArray(backendNotices.value) && backendNotices.value.length > 0) {
+          setNotices(backendNotices.value);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(`${storagePrefix}_notices`, JSON.stringify(backendNotices.value));
           }
         }
 
-        // Assignments
-        if (backendAssignments.status === 'fulfilled') {
-          const serverAssignments = Array.isArray(backendAssignments.value) ? backendAssignments.value : [];
-          if (isCustomUniversity || serverAssignments.length > 0) {
-            setAssignments(serverAssignments);
-            if (typeof window !== 'undefined') {
-              localStorage.setItem(`${storagePrefix}_assignments`, JSON.stringify(serverAssignments));
+        // Assignments: Merge without wiping user's locally created items
+        if (backendAssignments.status === 'fulfilled' && Array.isArray(backendAssignments.value) && backendAssignments.value.length > 0) {
+          setAssignments((prevLocal) => {
+            const serverMap = new Map(backendAssignments.value.map((a) => [a.id, a]));
+            const merged = [...backendAssignments.value];
+            for (const local of prevLocal) {
+              if (!serverMap.has(local.id)) {
+                merged.push(local);
+              }
             }
-          }
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(`${storagePrefix}_assignments`, JSON.stringify(merged));
+            }
+            return merged;
+          });
         }
 
-        // Attendance
-        if (backendAttendance.status === 'fulfilled') {
-          const serverAttendance = Array.isArray(backendAttendance.value) ? backendAttendance.value : [];
-          if (isCustomUniversity || serverAttendance.length > 0) {
-            setAttendance(serverAttendance);
-            if (typeof window !== 'undefined') {
-              localStorage.setItem(`${storagePrefix}_attendance`, JSON.stringify(serverAttendance));
+        // Attendance: Merge without wiping user's attendance records
+        if (backendAttendance.status === 'fulfilled' && Array.isArray(backendAttendance.value) && backendAttendance.value.length > 0) {
+          setAttendance((prevLocal) => {
+            const serverMap = new Map(backendAttendance.value.map((a) => [a.subject.toLowerCase(), a]));
+            const merged = [...backendAttendance.value];
+            for (const local of prevLocal) {
+              if (!serverMap.has(local.subject.toLowerCase())) {
+                merged.push(local);
+              }
             }
-          }
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(`${storagePrefix}_attendance`, JSON.stringify(merged));
+            }
+            return merged;
+          });
         }
       } catch {}
     }
@@ -154,6 +209,8 @@ export function useAcademicsCoursework(
       isMounted = false;
     };
   }, [storagePrefix, isCustomUniversity]);
+
+  
 
   // Coursework Handlers
   const updateAssignmentStatus = useCallback(
@@ -207,18 +264,7 @@ export function useAcademicsCoursework(
     [],
   );
 
-  // Practicals
-  const [practicals, setPracticals] = useState<PracticalExperiment[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${storagePrefix}_practicals`);
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {}
-      }
-    }
-    return isCustomUniversity ? [] : INITIAL_PRACTICALS;
-  });
+
 
   const markPracticalComplete = useCallback((id: string) => {
     setPracticals((prev) => {
@@ -272,18 +318,6 @@ export function useAcademicsCoursework(
     [],
   );
 
-  // Exams
-  const [exams, setExams] = useState<ExamItem[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${storagePrefix}_exams`);
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {}
-      }
-    }
-    return isCustomUniversity ? [] : INITIAL_EXAMS;
-  });
 
   const handleCreateExam = useCallback(
     (exam: {
@@ -592,18 +626,6 @@ export function useAcademicsCoursework(
     });
   }, []);
 
-  // Tasks
-  const [tasks, setTasks] = useState<AcademicTask[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${storagePrefix}_tasks`);
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {}
-      }
-    }
-    return isCustomUniversity ? [] : INITIAL_TASKS;
-  });
 
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskCategory, setNewTaskCategory] = useState<AcademicTask['category']>('Personal');
