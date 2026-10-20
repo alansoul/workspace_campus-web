@@ -120,37 +120,46 @@ export function useAcademicsWorkspace() {
       try {
         const liveEvents = await academicsService.getEvents();
         if (isMounted && liveEvents && liveEvents.length > 0) {
-          const normalized: CampusEvent[] = liveEvents.map((evt: CampusEvent & { registeredCount?: number }) => {
-            const attendeesList: EventAttendee[] = Array.isArray(evt.attendees) ? evt.attendees : [];
+          const cachedEvents: CampusEvent[] =
+            typeof window !== 'undefined'
+              ? JSON.parse(localStorage.getItem('campus_events') || '[]')
+              : [];
+          const cachedMap = new Map(cachedEvents.map((c) => [c.id, c]));
 
-            // 1. Prioritize PostgreSQL's per-user isInterested boolean
-            const isUserRegistered =
-              typeof evt.isInterested === 'boolean'
-                ? evt.isInterested
-                : attendeesList.some(
-                    (a) =>
-                      (currentUserId && a.id === currentUserId) ||
-                      (currentUserEmail && a.email?.toLowerCase() === currentUserEmail),
-                  );
+          const normalized: CampusEvent[] = liveEvents.map((evt) => {
+            const cachedMatch = cachedMap.get(evt.id);
+            const serverAttendees: EventAttendee[] = Array.isArray(evt.attendees) ? evt.attendees : [];
+            const cachedAttendees: EventAttendee[] = Array.isArray(cachedMatch?.attendees) ? cachedMatch.attendees : [];
 
-            // 2. Synchronize attendee roster length with true DB registeredCount
-            const count = evt.registeredCount ?? attendeesList.length;
-            let effectiveAttendees = attendeesList;
-            if (count > attendeesList.length) {
-              effectiveAttendees = [
-                ...attendeesList,
-                ...Array.from({ length: count - attendeesList.length }, (_, i) => ({
-                  id: `registered-${i}`,
-                  fullName: 'Registered Student',
-                  email: '',
+            // Combine attendees without duplicates
+            const attendeeMap = new Map<string, EventAttendee>();
+            for (const a of [...serverAttendees, ...cachedAttendees]) {
+              const key = a.id || a.email || a.fullName;
+              if (key) attendeeMap.set(key, a);
+            }
+
+            const isUserRegistered = Boolean(
+              cachedMatch?.isInterested ||
+              evt.isInterested ||
+              (currentUserId && attendeeMap.has(currentUserId)) ||
+              (currentUserEmail && attendeeMap.has(currentUserEmail))
+            );
+
+            if (isUserRegistered) {
+              const userKey = currentUserId || currentUserEmail || 'current-user';
+              if (!attendeeMap.has(userKey)) {
+                attendeeMap.set(userKey, {
+                  id: currentUserId || `student-${Date.now()}`,
+                  fullName: currentUserName || 'Student',
+                  email: currentUserEmail || 'student@campus.edu.in',
                   registeredAt: new Date().toISOString(),
-                })),
-              ];
+                });
+              }
             }
 
             return {
               ...evt,
-              attendees: effectiveAttendees,
+              attendees: Array.from(attendeeMap.values()),
               isInterested: isUserRegistered,
             };
           });
@@ -171,7 +180,7 @@ export function useAcademicsWorkspace() {
     return () => {
       isMounted = false;
     };
-  }, [currentUserId, currentUserEmail]);
+  }, [currentUserId, currentUserEmail, currentUserName]);
 
   const handleCreateEvent = useCallback(
     async (newEvent: {
@@ -308,21 +317,46 @@ export function useAcademicsWorkspace() {
 
       try {
         const serverUpdated = await academicsService.toggleEventRSVP(eventId, willRegister);
-        if (serverUpdated) {
+        if (serverUpdated && typeof serverUpdated === 'object') {
           setEvents((prev) => {
             const next = prev.map((e) => {
               if (e.id === eventId) {
-                const updatedAttendees = Array.isArray(serverUpdated.attendees)
+                const serverAttendees: EventAttendee[] = Array.isArray(serverUpdated.attendees)
                   ? serverUpdated.attendees
-                  : e.attendees;
+                  : (e.attendees ?? []);
+
+                let mergedAttendees = serverAttendees;
+                if (willRegister) {
+                  const hasUser = mergedAttendees.some(
+                    (a) =>
+                      (currentUserId && a.id === currentUserId) ||
+                      (currentUserEmail && a.email?.toLowerCase() === currentUserEmail),
+                  );
+                  if (!hasUser) {
+                    mergedAttendees = [
+                      {
+                        id: currentUserId || `student-${Date.now()}`,
+                        fullName: currentUserName || 'Student',
+                        email: currentUserEmail || 'student@campus.edu.in',
+                        registeredAt: new Date().toISOString(),
+                      },
+                      ...mergedAttendees,
+                    ];
+                  }
+                } else {
+                  mergedAttendees = mergedAttendees.filter(
+                    (a) =>
+                      !(
+                        (currentUserId && a.id === currentUserId) ||
+                        (currentUserEmail && a.email?.toLowerCase() === currentUserEmail)
+                      ),
+                  );
+                }
 
                 return {
                   ...e,
-                  attendees: updatedAttendees,
-                  isInterested:
-                    typeof serverUpdated.isInterested === 'boolean'
-                      ? serverUpdated.isInterested
-                      : willRegister,
+                  attendees: mergedAttendees,
+                  isInterested: willRegister,
                 };
               }
               return e;
@@ -654,8 +688,22 @@ export function useAcademicsWorkspace() {
 
         if (typeof setEvents === 'function') {
           setEvents((prev) => {
+            const prevMap = new Map(prev.map((e) => [e.id, e]));
+            // Preserve user's existing RSVP on inbox events
+            const preservedNewEvents = newEvents.map((ne) => {
+              const existing = prevMap.get(ne.id);
+              if (existing) {
+                return {
+                  ...ne,
+                  isInterested: existing.isInterested,
+                  attendees: existing.attendees || [],
+                };
+              }
+              return ne;
+            });
+
             const nonInboxEvents = prev.filter((e) => !e.id.startsWith('gmail-'));
-            const merged: CampusEvent[] = [...newEvents, ...nonInboxEvents];
+            const merged: CampusEvent[] = [...preservedNewEvents, ...nonInboxEvents];
             if (typeof window !== 'undefined') {
               localStorage.setItem('campus_events', JSON.stringify(merged));
             }
