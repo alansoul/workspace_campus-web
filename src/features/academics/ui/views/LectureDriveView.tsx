@@ -6,12 +6,21 @@ import type { DriveFile } from '../../types/academics.types';
 interface LectureDriveViewProps {
   files: DriveFile[];
   onToggleStar: (fileId: string) => void;
+  onDeleteFile?: (fileId: string) => void;
 }
 
-export function LectureDriveView({ files, onToggleStar }: LectureDriveViewProps) {
+export function LectureDriveView({ files, onToggleStar, onDeleteFile }: LectureDriveViewProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedSubject, setSelectedSubject] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState('');
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null); // <-- Add this state
+
+  // Close dropdown menu when clicking anywhere else on the screen
+  React.useEffect(() => {
+    const handleOutsideClick = () => setOpenMenuId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   const categories = ['All', 'Lectures', 'Notes', 'Assignments', 'Practicals', 'Question Papers'];
   const availableSubjects = ['All', ...Array.from(new Set(files.map((f) => f.subject)))];
@@ -175,10 +184,11 @@ startxref
                     {file.subject}
                   </span>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 relative">
                     <span className="text-[11px] font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
                       {file.category}
                     </span>
+
                     <button
                       type="button"
                       onClick={() => onToggleStar(file.id)}
@@ -189,6 +199,46 @@ startxref
                     >
                       ★
                     </button>
+
+                    {/* 3-Dot Actions Menu */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === file.id ? null : file.id);
+                        }}
+                        className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                        title="More options"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                        </svg>
+                      </button>
+
+                      {openMenuId === file.id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-0 top-full mt-1 w-36 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-30 animate-in fade-in zoom-in-95 duration-100"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              if (window.confirm(`Are you sure you want to delete "${file.name}"?`)) {
+                                onDeleteFile?.(file.id);
+                              }
+                            }}
+                            className="w-full text-left px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 font-medium flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete Material
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 

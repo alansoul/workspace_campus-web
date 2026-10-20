@@ -109,6 +109,33 @@ export function AcademicsApp() {
 
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // Track deleted files and derive active drive files without cascading renders
+  const [deletedFileIds, setDeletedFileIds] = useState<string[]>([]);
+  const activeDriveFiles = driveFiles.filter((file) => !deletedFileIds.includes(file.id));
+
+  const handleDeleteFile = (fileId: string) => {
+    setDeletedFileIds((prev) => [...prev, fileId]);
+
+    // Clean up from localStorage keys
+    const storageKeys = ['campus_drive_files', 'campus_files', 'workspace_drive_files'];
+    storageKeys.forEach((key) => {
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            localStorage.setItem(
+              key,
+              JSON.stringify(parsed.filter((f: { id: string }) => f.id !== fileId))
+            );
+          }
+        } catch {
+          // Ignore parse errors for non-JSON keys
+        }
+      }
+    });
+  };
+
   const onManualSync = async () => {
     setIsSyncing(true);
     try {
@@ -525,7 +552,11 @@ export function AcademicsApp() {
                 </button>
               </div>
 
-              <LectureDriveView files={driveFiles} onToggleStar={toggleStarFile} />
+              <LectureDriveView
+                files={activeDriveFiles}
+                onToggleStar={toggleStarFile}
+                onDeleteFile={handleDeleteFile}
+              />
             </div>
           )}
 
