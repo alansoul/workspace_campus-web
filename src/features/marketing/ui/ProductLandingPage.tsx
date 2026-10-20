@@ -29,7 +29,7 @@ export interface ProductLandingPageProps {
   previewImage?: string;
   previewVideo?: string;
   previewGreeting: string;
-  transcriptSample: {
+  transcriptSample?: {
     title: string;
     text: string;
   };
@@ -202,33 +202,35 @@ export function ProductLandingPage({
                   )}
                 </div>
 
-                <div className="absolute bottom-4 left-4 sm:left-6 z-20 w-[84%] max-w-sm rounded-2xl bg-white/98 backdrop-blur-md border border-[#DADCE0] shadow-xl p-3.5 space-y-2">
-                  <div className="flex items-center justify-between border-b border-[#F1F3F4] pb-2 text-[11px] text-[#5F6368]">
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-3.5 h-3.5 text-[#1A73E8]" />
-                      <span className="font-semibold text-[#1F1F1F]">
-                        {transcriptSample.title}
+                {transcriptSample && (
+                  <div className="absolute bottom-4 left-4 sm:left-6 z-20 w-[84%] max-w-sm rounded-2xl bg-white/98 backdrop-blur-md border border-[#DADCE0] shadow-xl p-3.5 space-y-2">
+                    <div className="flex items-center justify-between border-b border-[#F1F3F4] pb-2 text-[11px] text-[#5F6368]">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-3.5 h-3.5 text-[#1A73E8]" />
+                        <span className="font-semibold text-[#1F1F1F]">
+                          {transcriptSample.title}
+                        </span>
+                      </div>
+                      <span className="bg-[#E8F0FE] text-[#0B57D0] px-1.5 py-0.5 rounded-sm font-medium">
+                        AI Active
                       </span>
                     </div>
-                    <span className="bg-[#E8F0FE] text-[#0B57D0] px-1.5 py-0.5 rounded-sm font-medium">
-                      AI Active
-                    </span>
-                  </div>
 
-                  <p className="text-[12px] text-[#444746] leading-relaxed">
-                    {transcriptSample.text}
-                  </p>
+                    <p className="text-[12px] text-[#444746] leading-relaxed">
+                      {transcriptSample.text}
+                    </p>
 
-                  <div className="pt-1 flex items-center gap-3 text-[11px] font-medium text-[#1A73E8]">
-                    <span className="cursor-pointer hover:underline flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" /> Summarize
-                    </span>
-                    <span className="text-[#DADCE0]">•</span>
-                    <span className="cursor-pointer hover:underline flex items-center gap-1">
-                      <SlidersHorizontal className="w-3 h-3" /> Insert Context
-                    </span>
+                    <div className="pt-1 flex items-center gap-3 text-[11px] font-medium text-[#1A73E8]">
+                      <span className="cursor-pointer hover:underline flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" /> Summarize
+                      </span>
+                      <span className="text-[#DADCE0]">•</span>
+                      <span className="cursor-pointer hover:underline flex items-center gap-1">
+                        <SlidersHorizontal className="w-3 h-3" /> Insert Context
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>

@@ -20,13 +20,8 @@ export default function ChatPage() {
       appRoute="/chat"
       appIconSrc="/icons/northstar-circle-icon.svg"
       themeColor="#7C4DFF"
-      previewImage="/illustrations/chat-preview.webp"
       previewVideo="/videos/circle.mp4"
       previewGreeting="Hello, Team."
-      transcriptSample={{
-        title: '#hackathon-squad • Live Audio Huddle',
-        text: 'Alistair: Next.js edge runtime deployed. Smart India Hackathon frontend prototype is now synced with web sockets.',
-      }}
       features={[
         'Domain-restricted campus community channels and branch discussions',
         'Low-latency voice rooms with screen-sharing and noise cancellation',

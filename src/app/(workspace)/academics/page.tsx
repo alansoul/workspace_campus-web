@@ -35,12 +35,8 @@ export default function AcademicsPage() {
         appRoute="/academics"
         appIconSrc="/icons/northstar-campus-icon.svg"
         themeColor="#1A73E8"
-        previewImage="/illustrations/hero-preview-dark.webp"
+        previewVideo="/videos/campus.mp4"
         previewGreeting="Hello, Scholar."
-        transcriptSample={{
-          title: 'Operating Systems • Unit 03',
-          text: 'Two-phase commit ensures consensus across isolated node ledgers. Gemini generated 12 exam review questions from this syllabus.',
-        }}
         features={[
           'Institutional syllabus synchronization across engineering branches',
           'Gemini-powered lecture note summarization and flashcards',

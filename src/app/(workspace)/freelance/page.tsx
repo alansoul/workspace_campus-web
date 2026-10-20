@@ -20,12 +20,8 @@ export default function FreelancePage() {
       appRoute="/freelance"
       appIconSrc="/icons/northstar-workflow-icon.svg"
       themeColor="#137333"
-      previewImage="/illustrations/freelance-preview.webp"
+      previewVideo="/videos/workflow.mp4"
       previewGreeting="Hello, Creator."
-      transcriptSample={{
-        title: 'Fullstack Prototype Escrow • ₹12,000 Locked',
-        text: 'Client approved Milestone 2. Automatic contract release triggered safely to developer account.',
-      }}
       features={[
         'Automated milestone escrow transaction locking and dispute arbitration',
         'Direct project bids for verified student developers and designers',
