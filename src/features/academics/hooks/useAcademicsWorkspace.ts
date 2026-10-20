@@ -54,16 +54,19 @@ export function useAcademicsWorkspace() {
     if (userRole === 'ADMIN') {
       localStorage.setItem('campus_is_admin', 'true');
       localStorage.setItem('campus_role', 'ADMIN');
+    } else if (userRole && userRole !== 'ADMIN') {
+      localStorage.removeItem('campus_is_admin');
+      localStorage.setItem('campus_role', userRole);
     }
   }, [userRole]);
 
   const currentUserId = user?.id || profileModule.profile.id;
   const currentUserEmail = (user?.email || profileModule.profile.email)?.toLowerCase();
   const currentUserName = user?.name || profileModule.profile.name;
-  
 
-  // 2. Coursework, Attendance, Exams, Tasks, Drive, WhatsApp Engine
-  const courseworkModule = useAcademicsCoursework(currentUserName);
+  // 2. Coursework, Attendance, Exams, Tasks, Drive (Scoped Strictly by University)
+  const currentUniversityId = user?.universityId || null;
+  const courseworkModule = useAcademicsCoursework(currentUserName, currentUniversityId);
   const { setNotices, setTasks } = courseworkModule;
 
   // 3. Global Keyboard Shortcut for ⌘K / Ctrl+K

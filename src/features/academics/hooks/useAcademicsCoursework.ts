@@ -23,63 +23,70 @@ import {
 } from '../data/academics.data';
 import { academicsService } from '../services/academics.service';
 
-export function useAcademicsCoursework(authorName: string = 'Campus User') {
-  // 1. Assignments State
+export function useAcademicsCoursework(
+  authorName: string = 'Campus User',
+  universityId?: string | null,
+) {
+  // Prefix storage per university so institutions never share cached records
+  const storagePrefix = universityId ? `campus_${universityId}` : 'campus_default';
+  const isCustomUniversity = Boolean(universityId);
+
+  // 1. Assignments State (New institutions start clean: [])
   const [assignments, setAssignments] = useState<AssignmentItem[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('campus_assignments');
+      const saved = localStorage.getItem(`${storagePrefix}_assignments`);
       if (saved) {
         try {
           return JSON.parse(saved);
         } catch {}
       }
     }
-    return INITIAL_ASSIGNMENTS;
+    return isCustomUniversity ? [] : INITIAL_ASSIGNMENTS;
   });
   const [assignmentFilter, setAssignmentFilter] = useState<AssignmentStatus>('All');
 
   // 2. Attendance State
   const [attendance, setAttendance] = useState<AttendanceSubject[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('campus_attendance');
+      const saved = localStorage.getItem(`${storagePrefix}_attendance`);
       if (saved) {
         try {
           return JSON.parse(saved);
         } catch {}
       }
     }
-    return INITIAL_ATTENDANCE;
+    return isCustomUniversity ? [] : INITIAL_ATTENDANCE;
   });
 
   // 3. Notices State
   const [notices, setNotices] = useState<CampusNotice[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('campus_notices');
+      const saved = localStorage.getItem(`${storagePrefix}_notices`);
       if (saved) {
         try {
           return JSON.parse(saved);
         } catch {}
       }
     }
-    return INITIAL_NOTICES;
+    return isCustomUniversity ? [] : INITIAL_NOTICES;
   });
 
   // 4. Drive Files State
   const [driveFiles, setDriveFiles] = useState<DriveFile[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('campus_files');
+      const saved = localStorage.getItem(`${storagePrefix}_files`);
       if (saved) {
         try {
           return JSON.parse(saved);
         } catch {}
       }
     }
-    return INITIAL_FILES;
+    return isCustomUniversity ? [] : INITIAL_FILES;
   });
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  // 5. Initial Sync with Live Database (Smart Merge with Presets)
+  // 5. Initial Sync with Live Database (Scoped per institution)
   useEffect(() => {
     let isMounted = true;
 
@@ -95,79 +102,48 @@ export function useAcademicsCoursework(authorName: string = 'Campus User') {
 
         if (!isMounted) return;
 
-        // Merge Notices
-        if (backendNotices.status === 'fulfilled' && backendNotices.value.length > 0) {
-          setNotices((prev) => {
-            const serverMap = new Map(backendNotices.value.map((n) => [n.id, n]));
-            const merged = [...backendNotices.value];
-            for (const localNotice of prev) {
-              if (!serverMap.has(localNotice.id)) {
-                merged.push(localNotice);
-              }
-            }
+        // Drive Notes: Set database result directly (even if [] for new universities)
+        if (backendNotes.status === 'fulfilled') {
+          const serverNotes = Array.isArray(backendNotes.value) ? backendNotes.value : [];
+          if (isCustomUniversity || serverNotes.length > 0) {
+            setDriveFiles(serverNotes);
             if (typeof window !== 'undefined') {
-              localStorage.setItem('campus_notices', JSON.stringify(merged));
+              localStorage.setItem(`${storagePrefix}_files`, JSON.stringify(serverNotes));
             }
-            return merged;
-          });
+          }
         }
 
-        // Merge Attendance
-        if (backendAttendance.status === 'fulfilled' && backendAttendance.value.length > 0) {
-          setAttendance((prev) => {
-            const serverMap = new Map(
-              backendAttendance.value.map((a) => [a.subject.toLowerCase(), a]),
-            );
-            const merged = prev.map((localSub) => {
-              const fromServer = serverMap.get(localSub.subject.toLowerCase());
-              return fromServer ? { ...localSub, ...fromServer } : localSub;
-            });
-
-            for (const serverSub of backendAttendance.value) {
-              if (!merged.some((m) => m.subject.toLowerCase() === serverSub.subject.toLowerCase())) {
-                merged.push(serverSub);
-              }
-            }
-
+        // Notices
+        if (backendNotices.status === 'fulfilled') {
+          const serverNotices = Array.isArray(backendNotices.value) ? backendNotices.value : [];
+          if (isCustomUniversity || serverNotices.length > 0) {
+            setNotices(serverNotices);
             if (typeof window !== 'undefined') {
-              localStorage.setItem('campus_attendance', JSON.stringify(merged));
+              localStorage.setItem(`${storagePrefix}_notices`, JSON.stringify(serverNotices));
             }
-            return merged;
-          });
+          }
         }
 
-        // Merge Assignments
-        if (backendAssignments.status === 'fulfilled' && backendAssignments.value.length > 0) {
-          setAssignments((prev) => {
-            const serverMap = new Map(backendAssignments.value.map((a) => [a.id, a]));
-            const merged = [...backendAssignments.value];
-            for (const localAsg of prev) {
-              if (!serverMap.has(localAsg.id)) {
-                merged.push(localAsg);
-              }
-            }
+        // Assignments
+        if (backendAssignments.status === 'fulfilled') {
+          const serverAssignments = Array.isArray(backendAssignments.value) ? backendAssignments.value : [];
+          if (isCustomUniversity || serverAssignments.length > 0) {
+            setAssignments(serverAssignments);
             if (typeof window !== 'undefined') {
-              localStorage.setItem('campus_assignments', JSON.stringify(merged));
+              localStorage.setItem(`${storagePrefix}_assignments`, JSON.stringify(serverAssignments));
             }
-            return merged;
-          });
+          }
         }
 
-        // Merge Drive Notes & Materials
-        if (backendNotes.status === 'fulfilled' && backendNotes.value.length > 0) {
-          setDriveFiles((prev) => {
-            const serverMap = new Map(backendNotes.value.map((f) => [f.id, f]));
-            const merged = [...backendNotes.value];
-            for (const localFile of prev) {
-              if (!serverMap.has(localFile.id)) {
-                merged.push(localFile);
-              }
-            }
+        // Attendance
+        if (backendAttendance.status === 'fulfilled') {
+          const serverAttendance = Array.isArray(backendAttendance.value) ? backendAttendance.value : [];
+          if (isCustomUniversity || serverAttendance.length > 0) {
+            setAttendance(serverAttendance);
             if (typeof window !== 'undefined') {
-              localStorage.setItem('campus_files', JSON.stringify(merged));
+              localStorage.setItem(`${storagePrefix}_attendance`, JSON.stringify(serverAttendance));
             }
-            return merged;
-          });
+          }
         }
       } catch {}
     }
@@ -177,7 +153,7 @@ export function useAcademicsCoursework(authorName: string = 'Campus User') {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [storagePrefix, isCustomUniversity]);
 
   // Coursework Handlers
   const updateAssignmentStatus = useCallback(
@@ -234,14 +210,14 @@ export function useAcademicsCoursework(authorName: string = 'Campus User') {
   // Practicals
   const [practicals, setPracticals] = useState<PracticalExperiment[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('campus_practicals');
+      const saved = localStorage.getItem(`${storagePrefix}_practicals`);
       if (saved) {
         try {
           return JSON.parse(saved);
         } catch {}
       }
     }
-    return INITIAL_PRACTICALS;
+    return isCustomUniversity ? [] : INITIAL_PRACTICALS;
   });
 
   const markPracticalComplete = useCallback((id: string) => {
@@ -299,14 +275,14 @@ export function useAcademicsCoursework(authorName: string = 'Campus User') {
   // Exams
   const [exams, setExams] = useState<ExamItem[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('campus_exams');
+      const saved = localStorage.getItem(`${storagePrefix}_exams`);
       if (saved) {
         try {
           return JSON.parse(saved);
         } catch {}
       }
     }
-    return INITIAL_EXAMS;
+    return isCustomUniversity ? [] : INITIAL_EXAMS;
   });
 
   const handleCreateExam = useCallback(
@@ -619,14 +595,14 @@ export function useAcademicsCoursework(authorName: string = 'Campus User') {
   // Tasks
   const [tasks, setTasks] = useState<AcademicTask[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('campus_tasks');
+      const saved = localStorage.getItem(`${storagePrefix}_tasks`);
       if (saved) {
         try {
           return JSON.parse(saved);
         } catch {}
       }
     }
-    return INITIAL_TASKS;
+    return isCustomUniversity ? [] : INITIAL_TASKS;
   });
 
   const [newTaskTitle, setNewTaskTitle] = useState('');
