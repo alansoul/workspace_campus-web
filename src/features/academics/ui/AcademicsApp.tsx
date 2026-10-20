@@ -109,14 +109,30 @@ export function AcademicsApp() {
 
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Track deleted files and derive active drive files without cascading renders
-  const [deletedFileIds, setDeletedFileIds] = useState<string[]>([]);
+  // Persist deleted file IDs in localStorage so deleted cards never reappear on refresh
+  const [deletedFileIds, setDeletedFileIds] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      return JSON.parse(localStorage.getItem('campus_deleted_file_ids') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
   const activeDriveFiles = driveFiles.filter((file) => !deletedFileIds.includes(file.id));
 
   const handleDeleteFile = (fileId: string) => {
-    setDeletedFileIds((prev) => [...prev, fileId]);
+    setDeletedFileIds((prev) => {
+      const updated = Array.from(new Set([...prev, fileId]));
+      try {
+        localStorage.setItem('campus_deleted_file_ids', JSON.stringify(updated));
+      } catch {
+        // Handle private storage quota errors
+      }
+      return updated;
+    });
 
-    // Clean up from localStorage keys
+    // Clean up from any uploaded file storage keys
     const storageKeys = ['campus_drive_files', 'campus_files', 'workspace_drive_files'];
     storageKeys.forEach((key) => {
       const stored = localStorage.getItem(key);
