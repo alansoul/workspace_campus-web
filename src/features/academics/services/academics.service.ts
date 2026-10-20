@@ -8,7 +8,14 @@ import type {
   AssignmentItem,
   AttendanceSubject,
   ExamItem,
+  DayTimetable,
 } from '../types/academics.types';
+
+export interface TimetableSyncResponse {
+  schedule: DayTimetable[];
+  roomNo?: string;
+  effectiveDate?: string;
+}
 
 export interface SyncedCampusEmailItem {
   category: 'NOTICE' | 'EVENT' | 'EXAM' | 'TASK';
@@ -307,5 +314,36 @@ export const academicsService = {
         updates: [],
       };
     }
+  },
+
+  // 9. Timetable Sync
+  async getTimetable(
+    branch: string,
+    semester: number,
+    universityId?: string | null,
+  ): Promise<TimetableSyncResponse | null> {
+    try {
+      const uniQuery = universityId ? `&universityId=${encodeURIComponent(universityId)}` : '';
+      return await apiFetch<TimetableSyncResponse>(
+        `/universities/timetable?branch=${branch}&semester=${semester}${uniQuery}`,
+        { method: 'GET' },
+      );
+    } catch {
+      return null;
+    }
+  },
+
+  async saveTimetable(payload: {
+    branch: string;
+    semester: number;
+    schedule: DayTimetable[];
+    roomNo?: string;
+    effectiveDate?: string;
+    universityId?: string | null;
+  }): Promise<{ success: boolean }> {
+    return apiFetch<{ success: boolean }>('/universities/timetable', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
 };

@@ -19,9 +19,11 @@ import {
   LOST_ITEMS,
 } from '../data/academics.data';
 import { academicsService } from '../services/academics.service';
+import type { DayTimetable } from '../types/academics.types';
 import { useAcademicsProfile } from './useAcademicsProfile';
 import { useAcademicsCoursework } from './useAcademicsCoursework';
 import { useAuthSession } from '@/features/auth/hooks/useAuthSession';
+
 
 // Exported type for timetable modals and view routing
 export type BranchCode = 'CSE' | 'ECE' | 'DSAI' | 'MECH';
@@ -67,6 +69,85 @@ export function useAcademicsWorkspace() {
   // 1. Read universityId synchronously from localStorage on initial render to prevent tick-0 null mismatch
   const cachedUniId = typeof window !== 'undefined' ? localStorage.getItem('campus_university_id') : null;
   const currentUniversityId = user?.universityId || cachedUniId || null;
+
+  // Synchronized Timetable State across all students
+  const [liveTimetable, setLiveTimetable] = useState<DayTimetable[]>(profileModule.timetable);
+
+  // Fetch from PostgreSQL whenever branch, semester, or university changes
+  const refreshTimetable = useCallback(async () => {
+    try {
+      const data = await academicsService.getTimetable(
+        profileModule.selectedBranch,
+        profileModule.selectedSemester,
+        currentUniversityId,
+      );
+      if (data?.schedule && Array.isArray(data.schedule)) {
+        setLiveTimetable(data.schedule);
+      }
+    } catch (err) {
+      console.warn('Could not fetch updated timetable:', err);
+    }
+  }, [profileModule.selectedBranch, profileModule.selectedSemester, currentUniversityId]);
+
+  // Defer initial execution via a timer to prevent cascading render warnings
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void refreshTimetable();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [refreshTimetable]);
+
+  // Real-time WebSocket Listener (Dynamic update without refresh)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleRemoteUpdate = (event: Event) => {
+      const customDetail = (event as CustomEvent)?.detail;
+      if (
+        !customDetail ||
+        (customDetail.branch === profileModule.selectedBranch &&
+          Number(customDetail.semester) === Number(profileModule.selectedSemester))
+      ) {
+        void refreshTimetable();
+      }
+    };
+
+    window.addEventListener('timetable:updated', handleRemoteUpdate);
+    return () => window.removeEventListener('timetable:updated', handleRemoteUpdate);
+  }, [refreshTimetable, profileModule.selectedBranch, profileModule.selectedSemester]);
+
+  // Save to database & emit update for other students
+  const handleApplyImportedTimetable = useCallback(
+    async (data: Parameters<typeof profileModule.applyImportedTimetable>[0]) => {
+      profileModule.applyImportedTimetable(data);
+      if (data?.timetable) {
+        setLiveTimetable(data.timetable);
+      }
+
+      try {
+        await academicsService.saveTimetable({
+          branch: data.branch || profileModule.selectedBranch,
+          semester: Number(data.semester || profileModule.selectedSemester),
+          schedule: data.timetable,
+          roomNo: data.roomNo || profileModule.roomNo,
+          effectiveDate: data.effectiveDate || profileModule.effectiveDate,
+          universityId: currentUniversityId,
+        });
+
+        window.dispatchEvent(
+          new CustomEvent('timetable:updated', {
+            detail: {
+              branch: data.branch || profileModule.selectedBranch,
+              semester: data.semester || profileModule.selectedSemester,
+            },
+          }),
+        );
+      } catch (err) {
+        console.error('Failed to sync timetable to PostgreSQL:', err);
+      }
+    },
+    [profileModule, currentUniversityId],
+  );
 
   // Persist universityId to cache whenever user session updates
   useEffect(() => {
@@ -831,12 +912,12 @@ export function useAcademicsWorkspace() {
     selectedSemester: profileModule.selectedSemester,
     setSelectedSemester: profileModule.setSelectedSemester,
 
-    // Timetable & Subjects (Reactive to search query)
-    timetable: profileModule.timetable,
+    // Timetable & Subjects (Reactive to database & search query)
+    timetable: liveTimetable,
     subjects: filteredSubjects,
     isTimetableModalOpen: profileModule.isTimetableModalOpen,
     setIsTimetableModalOpen: profileModule.setIsTimetableModalOpen,
-    applyImportedTimetable: profileModule.applyImportedTimetable,
+    applyImportedTimetable: handleApplyImportedTimetable,
 
     // Events (Reactive to search query & category selection)
     events: filteredEvents,
