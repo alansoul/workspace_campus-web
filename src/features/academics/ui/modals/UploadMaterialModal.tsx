@@ -37,9 +37,15 @@ export function UploadMaterialModal({
       setFileName(file.name);
       setTitle(file.name.replace(/\.[^/.]+$/, ''));
       setFileSize(`${(file.size / (1024 * 1024)).toFixed(1)} MB`);
-      // Create local blob URL for immediate instant download/viewing
-      const localBlob = URL.createObjectURL(file);
-      setFileUrl(localBlob);
+
+      // Converts to a permanent Base64 Data URL that survives page refreshes
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setFileUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 

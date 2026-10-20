@@ -29,12 +29,31 @@ export function LectureDriveView({ files, onToggleStar }: LectureDriveViewProps)
 
   // Client-Side Safe Downloader & Viewer
   const handleDownload = (file: DriveFile) => {
-    // 1. If it's a real external cloud link (Google Drive, Dropbox, OneDrive, blob, etc.)
+    // 1. Handle expired blob URLs from previous page reloads
+    if (file.fileUrl && file.fileUrl.startsWith('blob:')) {
+      alert(
+        'This file link expired because it was uploaded in an earlier session. Please delete this document and re-upload it.'
+      );
+      return;
+    }
+
+    // 2. Direct download for persistent Base64 Data URLs
+    if (file.fileUrl && file.fileUrl.startsWith('data:')) {
+      const link = document.createElement('a');
+      link.href = file.fileUrl;
+      link.download = file.name.endsWith('.pdf') ? file.name : `${file.name}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
+    // 3. Real external cloud links (Google Drive, Dropbox, HTTPS)
     const isRealExternalLink =
       file.fileUrl &&
       file.fileUrl !== '#' &&
       !file.fileUrl.includes('drive.campus.edu') &&
-      (file.fileUrl.startsWith('http') || file.fileUrl.startsWith('blob:'));
+      file.fileUrl.startsWith('http');
 
     if (isRealExternalLink) {
       window.open(file.fileUrl, '_blank', 'noopener,noreferrer');
