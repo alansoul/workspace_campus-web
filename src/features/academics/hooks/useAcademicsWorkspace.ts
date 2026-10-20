@@ -70,8 +70,10 @@ export function useAcademicsWorkspace() {
   const cachedUniId = typeof window !== 'undefined' ? localStorage.getItem('campus_university_id') : null;
   const currentUniversityId = user?.universityId || cachedUniId || null;
 
-  // Synchronized Timetable State across all students
+  // Synchronized Timetable & Metadata State across all students
   const [liveTimetable, setLiveTimetable] = useState<DayTimetable[]>(profileModule.timetable);
+  const [liveRoomNo, setLiveRoomNo] = useState<string>(profileModule.roomNo);
+  const [liveEffectiveDate, setLiveEffectiveDate] = useState<string>(profileModule.effectiveDate);
 
   // Fetch from PostgreSQL whenever branch, semester, or university changes
   const refreshTimetable = useCallback(async () => {
@@ -81,23 +83,48 @@ export function useAcademicsWorkspace() {
         profileModule.selectedSemester,
         currentUniversityId,
       );
-      if (data?.schedule && Array.isArray(data.schedule)) {
-        setLiveTimetable(data.schedule);
+      if (data?.schedule && Array.isArray(data.schedule) && data.schedule.length > 0) {
+        const todayWeekday = new Date()
+          .toLocaleDateString('en-US', { weekday: 'long' })
+          .toLowerCase();
+
+        const normalizedSchedule: DayTimetable[] = data.schedule.map((d) => ({
+          ...d,
+          isToday: d.day.toLowerCase() === todayWeekday,
+        }));
+
+        setLiveTimetable(normalizedSchedule);
+        if (data.roomNo) setLiveRoomNo(data.roomNo);
+        if (data.effectiveDate) setLiveEffectiveDate(data.effectiveDate);
       }
     } catch (err) {
       console.warn('Could not fetch updated timetable:', err);
     }
   }, [profileModule.selectedBranch, profileModule.selectedSemester, currentUniversityId]);
 
-  // Defer initial execution via a timer to prevent cascading render warnings
+  // Defer initial execution and poll every 15s + on tab focus so students update automatically
   useEffect(() => {
     const timer = setTimeout(() => {
       void refreshTimetable();
     }, 50);
-    return () => clearTimeout(timer);
+
+    const pollInterval = setInterval(() => {
+      void refreshTimetable();
+    }, 15000);
+
+    const handleFocus = () => {
+      void refreshTimetable();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(pollInterval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [refreshTimetable]);
 
-  // Real-time WebSocket Listener (Dynamic update without refresh)
+  // Real-time Event Listener (Dynamic update without refresh)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -121,8 +148,19 @@ export function useAcademicsWorkspace() {
     async (data: Parameters<typeof profileModule.applyImportedTimetable>[0]) => {
       profileModule.applyImportedTimetable(data);
       if (data?.timetable) {
-        setLiveTimetable(data.timetable);
+        const todayWeekday = new Date()
+          .toLocaleDateString('en-US', { weekday: 'long' })
+          .toLowerCase();
+
+        setLiveTimetable(
+          data.timetable.map((d) => ({
+            ...d,
+            isToday: d.day.toLowerCase() === todayWeekday,
+          })),
+        );
       }
+      if (data?.roomNo) setLiveRoomNo(data.roomNo);
+      if (data?.effectiveDate) setLiveEffectiveDate(data.effectiveDate);
 
       try {
         await academicsService.saveTimetable({
@@ -456,15 +494,69 @@ export function useAcademicsWorkspace() {
   // 5. Reactive Search Filtering Across Every Category (Null-Safe)
   const q = searchQuery.trim().toLowerCase();
 
+  // Automatically derive Subjects from the live timetable so the Subjects page stays in sync
+  const liveSubjects = useMemo(() => {
+    const map = new Map<string, (typeof profileModule.subjects)[number]>();
+    let idx = 1;
+
+    for (const dayObj of liveTimetable) {
+      if (!Array.isArray(dayObj.slots)) continue;
+      for (const slot of dayObj.slots) {
+        const rawName = (slot.subjectName || '').trim();
+        if (
+          !rawName ||
+          rawName.toLowerCase() === 'lunch' ||
+          rawName.toLowerCase() === 'break' ||
+          rawName.toLowerCase() === 'free'
+        ) {
+          continue;
+        }
+        const key = rawName.toLowerCase();
+        const existing = map.get(key);
+        if (existing) {
+          existing.classesPerWeek += 1;
+        } else {
+          map.set(key, {
+            id: `sub-live-${idx++}`,
+            name: rawName,
+            code: slot.code || `CS10${idx}`,
+            faculty: slot.faculty || 'Faculty',
+            classesPerWeek: 1,
+            credits: 4,
+            assignmentsCount: courseworkModule.assignments.filter(
+              (a) => a.subject.toLowerCase() === key,
+            ).length,
+            filesCount: courseworkModule.driveFiles.filter(
+              (f) => f.subject.toLowerCase() === key,
+            ).length,
+            unitsCompleted: 1,
+            totalUnits: 4,
+            attendancePct:
+              courseworkModule.attendance.find((att) => att.subject.toLowerCase() === key)
+                ?.attendancePct ?? 100,
+          });
+        }
+      }
+    }
+
+   return map.size > 0 ? Array.from(map.values()) : profileModule.subjects;
+  }, [
+    liveTimetable,
+    profileModule,
+    courseworkModule.assignments,
+    courseworkModule.driveFiles,
+    courseworkModule.attendance,
+  ]);
+
   const filteredSubjects = useMemo(() => {
-    if (!q) return profileModule.subjects;
-    return profileModule.subjects.filter(
+    if (!q) return liveSubjects;
+    return liveSubjects.filter(
       (sub) =>
         (sub.name || '').toLowerCase().includes(q) ||
         (sub.code || '').toLowerCase().includes(q) ||
         (sub.faculty || '').toLowerCase().includes(q),
     );
-  }, [profileModule.subjects, q]);
+  }, [liveSubjects, q]);
 
   const filteredAssignments = useMemo(() => {
     return courseworkModule.assignments.filter((asg) => {
@@ -903,9 +995,8 @@ export function useAcademicsWorkspace() {
     greeting: getLiveGreeting(),
     isAdmin,
     institutionName: profileModule.institutionName,
-    roomNo: profileModule.roomNo,
-    effectiveDate: profileModule.effectiveDate,
-
+    roomNo: liveRoomNo || profileModule.roomNo,
+    effectiveDate: liveEffectiveDate || profileModule.effectiveDate,
     // Branch & Semester
     selectedBranch: profileModule.selectedBranch,
     setSelectedBranch: profileModule.setSelectedBranch,
