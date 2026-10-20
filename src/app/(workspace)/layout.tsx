@@ -72,19 +72,19 @@ export default function SuiteLayout({ children }: { children: React.ReactNode })
   return (
     <CallProvider>
       <div className="min-h-screen bg-[#F8FAFD] text-slate-900 flex flex-col font-['Google_Sans',sans-serif]">
-        {/* Universal Workspace Header Bar — Frosted Navy */}
-        <header className="h-14 border-b border-indigo-950/60 bg-[#0B132B]/95 backdrop-blur-md text-white flex items-center justify-between px-4 sm:px-6 sticky top-0 z-40 select-none shadow-sm">
+        {/* Universal Workspace Header Bar — Clean White */}
+        <header className="h-14 border-b border-slate-200 bg-white text-slate-800 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-40 select-none shadow-xs">
           <div className="flex items-center gap-3 min-w-0">
             <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0 group cursor-pointer">
-              <div className="w-8 h-8 rounded-xl bg-linear-to-tr from-cyan-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-xs group-hover:scale-105 transition-transform">
+              <div className="w-8 h-8 rounded-xl bg-linear-to-tr from-indigo-600 to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-xs group-hover:scale-105 transition-transform">
                 ✦
               </div>
-              <span className="font-semibold text-sm tracking-tight text-white group-hover:text-cyan-300 transition-colors truncate max-w-50 sm:max-w-xs">
+              <span className="font-semibold text-sm tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors truncate max-w-50 sm:max-w-xs">
                 {universityTitle}
               </span>
             </Link>
-            <span className="text-slate-600">/</span>
-            <span className="text-xs text-slate-300 font-medium truncate">{currentApp}</span>
+            <span className="text-slate-300">/</span>
+            <span className="text-xs text-slate-500 font-medium truncate">{currentApp}</span>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
