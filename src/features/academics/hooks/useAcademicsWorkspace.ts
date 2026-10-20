@@ -841,8 +841,8 @@ export function useAcademicsWorkspace() {
     openAiDrawerWithPrompt,
     handleFullInboxSync,
 
-    // Campus Help
-    facultyDirectory: FACULTY_DIRECTORY,
-    lostItems: LOST_ITEMS,
+    // Campus Help (Clean state for custom universities; mock only for unlinked demo)
+    facultyDirectory: currentUniversityId ? [] : FACULTY_DIRECTORY,
+    lostItems: currentUniversityId ? [] : LOST_ITEMS,
   };
 }
