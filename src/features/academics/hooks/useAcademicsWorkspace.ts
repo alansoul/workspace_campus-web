@@ -21,6 +21,7 @@ import {
 import { academicsService } from '../services/academics.service';
 import { useAcademicsProfile } from './useAcademicsProfile';
 import { useAcademicsCoursework } from './useAcademicsCoursework';
+import { useAuthSession } from '@/features/auth/hooks/useAuthSession';
 
 // Exported type for timetable modals and view routing
 export type BranchCode = 'CSE' | 'ECE' | 'DSAI' | 'MECH';
@@ -29,19 +30,17 @@ export function useAcademicsWorkspace() {
   const [activeTab, setActiveTab] = useState<AcademicTab>('timetable');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 1. Profile, Branch, Timetable Engine
-  const profileModule = useAcademicsProfile();
-  const currentUserId = profileModule.profile.id;
-  const currentUserEmail = profileModule.profile.email?.toLowerCase();
-  const currentUserName = profileModule.profile.name;
+  // 1. Database-Backed Auth Session
+  const { user } = useAuthSession();
 
-  const isAdmin = Boolean(
-    profileModule.isAdmin ||
-    currentUserEmail?.includes('alansoul') ||
-    currentUserEmail?.includes('admin') ||
-    currentUserName?.toLowerCase().includes('alan soul') ||
-    (typeof window !== 'undefined' && localStorage.getItem('campus_is_admin') === 'true')
-  );
+  // True ONLY if the database record in PostgreSQL has role = 'ADMIN'
+  const isAdmin = user?.role === 'ADMIN';
+
+  // Profile, Branch, Timetable Engine
+  const profileModule = useAcademicsProfile();
+  const currentUserId = user?.id || profileModule.profile.id;
+  const currentUserEmail = user?.email?.toLowerCase() || profileModule.profile.email?.toLowerCase();
+  const currentUserName = user?.name || profileModule.profile.name;
   
 
   // 2. Coursework, Attendance, Exams, Tasks, Drive, WhatsApp Engine
