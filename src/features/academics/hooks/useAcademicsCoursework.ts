@@ -31,107 +31,83 @@ export function useAcademicsCoursework(
   const storagePrefix = universityId ? `campus_${universityId}` : 'campus_default';
   const isCustomUniversity = Boolean(universityId);
 
-  // 1. Assignments
-  const [assignments, setAssignments] = useState<AssignmentItem[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${storagePrefix}_assignments`);
-      if (saved) {
-        try { return JSON.parse(saved); } catch {}
+  // Helper to read scoped storage first, falling back to legacy global key so no items are lost
+  const getStoredData = useCallback(
+    <T>(key: string, fallback: T): T => {
+      if (typeof window === 'undefined') return fallback;
+      const scoped = localStorage.getItem(`${storagePrefix}_${key}`);
+      if (scoped) {
+        try {
+          return JSON.parse(scoped) as T;
+        } catch {}
       }
-    }
-    return isCustomUniversity ? [] : INITIAL_ASSIGNMENTS;
-  });
+      const legacy = localStorage.getItem(`campus_${key}`);
+      if (legacy) {
+        try {
+          const parsed = JSON.parse(legacy);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            localStorage.setItem(`${storagePrefix}_${key}`, legacy);
+            return parsed as unknown as T;
+          }
+        } catch {}
+      }
+      return fallback;
+    },
+    [storagePrefix],
+  );
+
+  // 1. Assignments
+  const [assignments, setAssignments] = useState<AssignmentItem[]>(() =>
+    getStoredData('assignments', isCustomUniversity ? [] : INITIAL_ASSIGNMENTS),
+  );
   const [assignmentFilter, setAssignmentFilter] = useState<AssignmentStatus>('All');
 
   // 2. Attendance
-  const [attendance, setAttendance] = useState<AttendanceSubject[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${storagePrefix}_attendance`);
-      if (saved) {
-        try { return JSON.parse(saved); } catch {}
-      }
-    }
-    return isCustomUniversity ? [] : INITIAL_ATTENDANCE;
-  });
+  const [attendance, setAttendance] = useState<AttendanceSubject[]>(() =>
+    getStoredData('attendance', isCustomUniversity ? [] : INITIAL_ATTENDANCE),
+  );
 
   // 3. Notices
-  const [notices, setNotices] = useState<CampusNotice[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${storagePrefix}_notices`);
-      if (saved) {
-        try { return JSON.parse(saved); } catch {}
-      }
-    }
-    return isCustomUniversity ? [] : INITIAL_NOTICES;
-  });
+  const [notices, setNotices] = useState<CampusNotice[]>(() =>
+    getStoredData('notices', isCustomUniversity ? [] : INITIAL_NOTICES),
+  );
 
   // 4. Drive Files
-  const [driveFiles, setDriveFiles] = useState<DriveFile[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${storagePrefix}_files`);
-      if (saved) {
-        try { return JSON.parse(saved); } catch {}
-      }
-    }
-    return isCustomUniversity ? [] : INITIAL_FILES;
-  });
+  const [driveFiles, setDriveFiles] = useState<DriveFile[]>(() =>
+    getStoredData('files', isCustomUniversity ? [] : INITIAL_FILES),
+  );
 
-  // 5. Practicals (Moved to top so setPracticals exists before readStorage)
-  const [practicals, setPracticals] = useState<PracticalExperiment[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${storagePrefix}_practicals`);
-      if (saved) {
-        try { return JSON.parse(saved); } catch {}
-      }
-    }
-    return isCustomUniversity ? [] : INITIAL_PRACTICALS;
-  });
+  // 5. Practicals
+  const [practicals, setPracticals] = useState<PracticalExperiment[]>(() =>
+    getStoredData('practicals', isCustomUniversity ? [] : INITIAL_PRACTICALS),
+  );
 
-  // 6. Exams (Moved to top so setExams exists before readStorage)
-  const [exams, setExams] = useState<ExamItem[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${storagePrefix}_exams`);
-      if (saved) {
-        try { return JSON.parse(saved); } catch {}
-      }
-    }
-    return isCustomUniversity ? [] : INITIAL_EXAMS;
-  });
+  // 6. Exams
+  const [exams, setExams] = useState<ExamItem[]>(() =>
+    getStoredData('exams', isCustomUniversity ? [] : INITIAL_EXAMS),
+  );
 
-  // 7. Tasks (Moved to top so setTasks exists before readStorage)
-  const [tasks, setTasks] = useState<AcademicTask[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`${storagePrefix}_tasks`);
-      if (saved) {
-        try { return JSON.parse(saved); } catch {}
-      }
-    }
-    return isCustomUniversity ? [] : INITIAL_TASKS;
-  });
+  // 7. Tasks
+  const [tasks, setTasks] = useState<AcademicTask[]>(() =>
+    getStoredData('tasks', isCustomUniversity ? [] : INITIAL_TASKS),
+  );
 
-  // Synchronize state from localStorage whenever storagePrefix resolves or changes
+  // Synchronize state from localStorage whenever storagePrefix resolves or changes (Deferred to prevent cascading render lint error)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const readStorage = <T>(key: string, setter: React.Dispatch<React.SetStateAction<T>>, fallback: T) => {
-      const raw = localStorage.getItem(`${storagePrefix}_${key}`);
-      if (raw) {
-        try {
-          setter(JSON.parse(raw));
-          return;
-        } catch {}
-      }
-      setter(fallback);
-    };
+    const timer = setTimeout(() => {
+      setAssignments(getStoredData('assignments', isCustomUniversity ? [] : INITIAL_ASSIGNMENTS));
+      setAttendance(getStoredData('attendance', isCustomUniversity ? [] : INITIAL_ATTENDANCE));
+      setNotices(getStoredData('notices', isCustomUniversity ? [] : INITIAL_NOTICES));
+      setDriveFiles(getStoredData('files', isCustomUniversity ? [] : INITIAL_FILES));
+      setPracticals(getStoredData('practicals', isCustomUniversity ? [] : INITIAL_PRACTICALS));
+      setExams(getStoredData('exams', isCustomUniversity ? [] : INITIAL_EXAMS));
+      setTasks(getStoredData('tasks', isCustomUniversity ? [] : INITIAL_TASKS));
+    }, 0);
 
-    readStorage('assignments', setAssignments, isCustomUniversity ? [] : INITIAL_ASSIGNMENTS);
-    readStorage('attendance', setAttendance, isCustomUniversity ? [] : INITIAL_ATTENDANCE);
-    readStorage('notices', setNotices, isCustomUniversity ? [] : INITIAL_NOTICES);
-    readStorage('files', setDriveFiles, isCustomUniversity ? [] : INITIAL_FILES);
-    readStorage('practicals', setPracticals, isCustomUniversity ? [] : INITIAL_PRACTICALS);
-    readStorage('exams', setExams, isCustomUniversity ? [] : INITIAL_EXAMS);
-    readStorage('tasks', setTasks, isCustomUniversity ? [] : INITIAL_TASKS);
-  }, [storagePrefix, isCustomUniversity]);
+    return () => clearTimeout(timer);
+  }, [storagePrefix, isCustomUniversity, getStoredData]);
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
@@ -218,6 +194,7 @@ export function useAcademicsCoursework(
       setAssignments((prev) => {
         const next = prev.map((asg) => (asg.id === assignmentId ? { ...asg, status: newStatus } : asg));
         if (typeof window !== 'undefined') {
+          localStorage.setItem(`${storagePrefix}_assignments`, JSON.stringify(next));
           localStorage.setItem('campus_assignments', JSON.stringify(next));
         }
         return next;
@@ -227,7 +204,7 @@ export function useAcademicsCoursework(
         await academicsService.updateAssignmentStatus(assignmentId, newStatus);
       } catch {}
     },
-    [],
+    [storagePrefix, setAssignments],
   );
 
   const handleCreateAssignment = useCallback(
@@ -256,25 +233,28 @@ export function useAcademicsCoursework(
       setAssignments((prev) => {
         const next = [item, ...prev];
         if (typeof window !== 'undefined') {
+          localStorage.setItem(`${storagePrefix}_assignments`, JSON.stringify(next));
           localStorage.setItem('campus_assignments', JSON.stringify(next));
         }
         return next;
       });
     },
-    [],
+    [storagePrefix, setAssignments],
   );
 
-
-
-  const markPracticalComplete = useCallback((id: string) => {
-    setPracticals((prev) => {
-      const next = prev.map((p) => (p.id === id ? { ...p, completed: !p.completed } : p));
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('campus_practicals', JSON.stringify(next));
-      }
-      return next;
-    });
-  }, []);
+  const markPracticalComplete = useCallback(
+    (id: string) => {
+      setPracticals((prev) => {
+        const next = prev.map((p) => (p.id === id ? { ...p, completed: !p.completed } : p));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`${storagePrefix}_practicals`, JSON.stringify(next));
+          localStorage.setItem('campus_practicals', JSON.stringify(next));
+        }
+        return next;
+      });
+    },
+    [storagePrefix, setPracticals],
+  );
 
   const handleCreatePractical = useCallback(
     (newPractical: {
@@ -310,14 +290,14 @@ export function useAcademicsCoursework(
       setPracticals((prev) => {
         const next = [item, ...prev];
         if (typeof window !== 'undefined') {
+          localStorage.setItem(`${storagePrefix}_practicals`, JSON.stringify(next));
           localStorage.setItem('campus_practicals', JSON.stringify(next));
         }
         return next;
       });
     },
-    [],
+    [storagePrefix, setPracticals],
   );
-
 
   const handleCreateExam = useCallback(
     (exam: {
@@ -345,12 +325,13 @@ export function useAcademicsCoursework(
       setExams((prev) => {
         const next = [item, ...prev];
         if (typeof window !== 'undefined') {
+          localStorage.setItem(`${storagePrefix}_exams`, JSON.stringify(next));
           localStorage.setItem('campus_exams', JSON.stringify(next));
         }
         return next;
       });
     },
-    [],
+    [storagePrefix, setExams],
   );
 
   const handleUpdatePractical = useCallback(
@@ -382,23 +363,28 @@ export function useAcademicsCoursework(
             : p,
         );
         if (typeof window !== 'undefined') {
+          localStorage.setItem(`${storagePrefix}_practicals`, JSON.stringify(next));
           localStorage.setItem('campus_practicals', JSON.stringify(next));
         }
         return next;
       });
     },
-    [],
+    [storagePrefix, setPracticals],
   );
 
-  const handleDeletePractical = useCallback((id: string) => {
-    setPracticals((prev) => {
-      const next = prev.filter((p) => p.id !== id);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('campus_practicals', JSON.stringify(next));
-      }
-      return next;
-    });
-  }, []);
+  const handleDeletePractical = useCallback(
+    (id: string) => {
+      setPracticals((prev) => {
+        const next = prev.filter((p) => p.id !== id);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`${storagePrefix}_practicals`, JSON.stringify(next));
+          localStorage.setItem('campus_practicals', JSON.stringify(next));
+        }
+        return next;
+      });
+    },
+    [storagePrefix, setPracticals],
+  );
 
   const handleUpdateExam = useCallback(
     (
@@ -416,23 +402,28 @@ export function useAcademicsCoursework(
       setExams((prev) => {
         const next = prev.map((ex) => (ex.id === id ? { ...ex, ...updated } : ex));
         if (typeof window !== 'undefined') {
+          localStorage.setItem(`${storagePrefix}_exams`, JSON.stringify(next));
           localStorage.setItem('campus_exams', JSON.stringify(next));
         }
         return next;
       });
     },
-    [],
+    [storagePrefix, setExams],
   );
 
-  const handleDeleteExam = useCallback((id: string) => {
-    setExams((prev) => {
-      const next = prev.filter((ex) => ex.id !== id);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('campus_exams', JSON.stringify(next));
-      }
-      return next;
-    });
-  }, []);
+  const handleDeleteExam = useCallback(
+    (id: string) => {
+      setExams((prev) => {
+        const next = prev.filter((ex) => ex.id !== id);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`${storagePrefix}_exams`, JSON.stringify(next));
+          localStorage.setItem('campus_exams', JSON.stringify(next));
+        }
+        return next;
+      });
+    },
+    [storagePrefix, setExams],
+  );
 
   // Attendance Handlers
   const logAttendance = useCallback(async (subjectName: string, attended: boolean) => {
@@ -645,6 +636,7 @@ export function useAcademicsCoursework(
     setTasks((prev) => {
       const next = [item, ...prev];
       if (typeof window !== 'undefined') {
+        localStorage.setItem(`${storagePrefix}_tasks`, JSON.stringify(next));
         localStorage.setItem('campus_tasks', JSON.stringify(next));
       }
       return next;
@@ -652,25 +644,33 @@ export function useAcademicsCoursework(
     setNewTaskTitle('');
   };
 
-  const deleteTask = useCallback((taskId: string) => {
-    setTasks((prev) => {
-      const next = prev.filter((t) => t.id !== taskId);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('campus_tasks', JSON.stringify(next));
-      }
-      return next;
-    });
-  }, []);
+  const deleteTask = useCallback(
+    (taskId: string) => {
+      setTasks((prev) => {
+        const next = prev.filter((t) => t.id !== taskId);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`${storagePrefix}_tasks`, JSON.stringify(next));
+          localStorage.setItem('campus_tasks', JSON.stringify(next));
+        }
+        return next;
+      });
+    },
+    [storagePrefix, setTasks],
+  );
 
-  const toggleTaskCompletion = useCallback((taskId: string) => {
-    setTasks((prev) => {
-      const next = prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t));
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('campus_tasks', JSON.stringify(next));
-      }
-      return next;
-    });
-  }, []);
+  const toggleTaskCompletion = useCallback(
+    (taskId: string) => {
+      setTasks((prev) => {
+        const next = prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`${storagePrefix}_tasks`, JSON.stringify(next));
+          localStorage.setItem('campus_tasks', JSON.stringify(next));
+        }
+        return next;
+      });
+    },
+    [storagePrefix, setTasks],
+  );
 
   // WhatsApp Raw Text Ingestion
   const importFromWhatsApp = useCallback(
@@ -700,13 +700,14 @@ export function useAcademicsCoursework(
         setTasks((prev) => {
           const next = [item, ...prev];
           if (typeof window !== 'undefined') {
+            localStorage.setItem(`${storagePrefix}_tasks`, JSON.stringify(next));
             localStorage.setItem('campus_tasks', JSON.stringify(next));
           }
           return next;
         });
       }
     },
-    [handleCreateNotice],
+    [handleCreateNotice, storagePrefix, setTasks],
   );
 
   return {
