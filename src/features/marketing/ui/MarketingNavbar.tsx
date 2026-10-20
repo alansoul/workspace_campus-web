@@ -15,6 +15,41 @@ import {
   RESOURCES_MENU,
 } from '../data/navigation.data';
 import { createPortal } from 'react-dom';
+import { useAuthSession } from '@/features/auth/hooks/useAuthSession';
+
+// Generates 1–2 uppercase initials from full name or email
+function getInitials(name?: string | null, email?: string | null): string {
+  if (name?.trim()) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  if (email?.trim()) {
+    return email.trim()[0].toUpperCase();
+  }
+  return 'U';
+}
+
+// Consistent background gradient based on the user's name
+function getAvatarGradient(seed?: string | null): string {
+  const gradients = [
+    'from-indigo-600 to-violet-600',
+    'from-blue-600 to-cyan-600',
+    'from-emerald-600 to-teal-600',
+    'from-violet-600 to-purple-600',
+    'from-rose-500 to-pink-600',
+    'from-amber-500 to-orange-600',
+  ];
+  if (!seed) return gradients[0];
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % gradients.length;
+  return gradients[index];
+}
 
 
 
@@ -37,6 +72,16 @@ type ActiveDropdown =
 
 
 export function MarketingNavbar({ onScrollTo }: NavbarProps) {
+  const { user, isAuthenticated } = useAuthSession() as {
+    user?: { name?: string; fullName?: string; email?: string; image?: string; avatarUrl?: string };
+    isAuthenticated?: boolean;
+  };
+
+  const userName = user?.fullName || user?.name || user?.email?.split('@')[0] || '';
+  const userInitials = getInitials(userName, user?.email);
+  const avatarGradient = getAvatarGradient(userName || user?.email);
+  const avatarImage = user?.avatarUrl || user?.image;
+
   const [activeMenu, setActiveMenu] = useState<ActiveDropdown>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -346,14 +391,39 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
 
 
 
-          <Link
-            href="/dashboard"
-            aria-label="Account"
-            title="Account"
-            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#00897B] text-sm font-semibold text-white shadow-sm transition hover:opacity-90 sm:flex sm:h-9 sm:w-9"
-          >
-            S
-          </Link>
+          {isAuthenticated ? (
+            <Link
+              href="/dashboard"
+              aria-label={userName ? `Account: ${userName}` : 'Account Dashboard'}
+              title={userName ? `Signed in as ${userName}` : 'Account Dashboard'}
+              className="relative hidden shrink-0 sm:flex"
+            >
+              <div
+                className={`relative flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold tracking-wider text-white shadow-xs ring-2 ring-white/90 transition-all duration-200 hover:scale-105 hover:shadow-md overflow-hidden bg-gradient-to-tr ${avatarGradient}`}
+              >
+                {avatarImage ? (
+                  <Image
+                    src={avatarImage}
+                    alt={userName || 'Account'}
+                    width={36}
+                    height={36}
+                    unoptimized
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span>{userInitials}</span>
+                )}
+              </div>
+              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="hidden rounded-full border border-[#DADCE0] px-4 py-2 text-sm font-medium text-[#444746] transition hover:bg-[#F8FAFD] hover:text-[#0B57D0] sm:inline-block"
+            >
+              Sign in
+            </Link>
+          )}
         </div>
       </header>
 
