@@ -72,8 +72,8 @@ export default function SuiteLayout({ children }: { children: React.ReactNode })
   return (
     <CallProvider>
       <div className="min-h-screen bg-[#F8FAFD] text-slate-900 flex flex-col font-['Google_Sans',sans-serif]">
-        {/* Universal Workspace Header Bar */}
-        <header className="h-14 border-b border-slate-800 bg-[#0E1525] text-white flex items-center justify-between px-4 sm:px-6 sticky top-0 z-40 select-none">
+        {/* Universal Workspace Header Bar — Frosted Navy */}
+        <header className="h-14 border-b border-indigo-950/60 bg-[#0B132B]/95 backdrop-blur-md text-white flex items-center justify-between px-4 sm:px-6 sticky top-0 z-40 select-none shadow-sm">
           <div className="flex items-center gap-3 min-w-0">
             <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0 group cursor-pointer">
               <div className="w-8 h-8 rounded-xl bg-linear-to-tr from-cyan-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-xs group-hover:scale-105 transition-transform">
