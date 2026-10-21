@@ -117,13 +117,21 @@ export function useAcademicsCoursework(
 
     async function hydrateFromDatabase() {
       try {
-        const [backendNotices, backendAttendance, backendAssignments, backendNotes] =
-          await Promise.allSettled([
-            academicsService.getNotices(),
-            academicsService.getAttendance(),
-            academicsService.getAssignments(),
-            academicsService.getNotes(),
-          ]);
+        const [
+          backendNotices,
+          backendAttendance,
+          backendAssignments,
+          backendNotes,
+          backendExams,
+          backendPracticals,
+        ] = await Promise.allSettled([
+          academicsService.getNotices(),
+          academicsService.getAttendance(),
+          academicsService.getAssignments(),
+          academicsService.getNotes(),
+          academicsService.getExams(),
+          academicsService.getPracticals(),
+        ]);
 
         if (!isMounted) return;
 
@@ -175,6 +183,30 @@ export function useAcademicsCoursework(
             }
             return merged;
           });
+        }
+
+        // Exams: Sync from PostgreSQL
+        if (
+          backendExams.status === 'fulfilled' &&
+          Array.isArray(backendExams.value) &&
+          backendExams.value.length > 0
+        ) {
+          setExams(backendExams.value);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(`${storagePrefix}_exams`, JSON.stringify(backendExams.value));
+          }
+        }
+
+        // Practicals: Sync from PostgreSQL
+        if (
+          backendPracticals.status === 'fulfilled' &&
+          Array.isArray(backendPracticals.value) &&
+          backendPracticals.value.length > 0
+        ) {
+          setPracticals(backendPracticals.value);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(`${storagePrefix}_practicals`, JSON.stringify(backendPracticals.value));
+          }
         }
       } catch {}
     }
@@ -257,7 +289,7 @@ export function useAcademicsCoursework(
   );
 
   const handleCreatePractical = useCallback(
-    (newPractical: {
+    async (newPractical: {
       title: string;
       subject: string;
       labName?: string;
@@ -295,12 +327,25 @@ export function useAcademicsCoursework(
         }
         return next;
       });
+
+      try {
+        const saved = await academicsService.createPractical(item);
+        if (saved && saved.id) {
+          setPracticals((prev) => {
+            const next = prev.map((p) => (p.id === item.id ? { ...saved, ...p, id: saved.id } : p));
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(`${storagePrefix}_practicals`, JSON.stringify(next));
+            }
+            return next;
+          });
+        }
+      } catch {}
     },
     [storagePrefix, setPracticals],
   );
 
   const handleCreateExam = useCallback(
-    (exam: {
+    async (exam: {
       title: string;
       subject: string;
       type: ExamItem['type'];
@@ -330,6 +375,19 @@ export function useAcademicsCoursework(
         }
         return next;
       });
+
+      try {
+        const saved = await academicsService.createExam(item);
+        if (saved && saved.id) {
+          setExams((prev) => {
+            const next = prev.map((e) => (e.id === item.id ? { ...saved, ...e, id: saved.id } : e));
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(`${storagePrefix}_exams`, JSON.stringify(next));
+            }
+            return next;
+          });
+        }
+      } catch {}
     },
     [storagePrefix, setExams],
   );

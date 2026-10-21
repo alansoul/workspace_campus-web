@@ -9,6 +9,7 @@ import type {
   AttendanceSubject,
   ExamItem,
   DayTimetable,
+  PracticalExperiment,
 } from '../types/academics.types';
 
 export interface TimetableSyncResponse {
@@ -205,6 +206,52 @@ export const academicsService = {
     } catch {
       return [];
     }
+  },
+
+  async createExam(payload: Partial<ExamItem>): Promise<ExamItem | null> {
+    try {
+      return await apiFetch<ExamItem>('/universities/exams', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      return null;
+    }
+  },
+
+  // Practicals
+  async getPracticals(): Promise<PracticalExperiment[]> {
+    try {
+      const res = await apiFetch<PracticalExperiment[] | { data: PracticalExperiment[] }>(
+        '/universities/practicals',
+        { method: 'GET' },
+      );
+      if (Array.isArray(res)) return res;
+      if (res && 'data' in res && Array.isArray(res.data)) return res.data;
+      return [];
+    } catch {
+      return [];
+    }
+  },
+
+  async createPractical(payload: Partial<PracticalExperiment>): Promise<PracticalExperiment | null> {
+    try {
+      return await apiFetch<PracticalExperiment>('/universities/practicals', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      return null;
+    }
+  },
+
+  async togglePracticalComplete(id: string, completed: boolean): Promise<void> {
+    try {
+      await apiFetch(`/universities/practicals/${id}/complete`, {
+        method: 'PATCH',
+        body: JSON.stringify({ completed }),
+      });
+    } catch {}
   },
 
   // 6. Drive & Lecture Materials (Strongly Typed, No Any)
