@@ -640,7 +640,7 @@ ${noticesSummary}
                 {msg.sender === 'user' ? (
                   msg.text
                 ) : (
-                  <MarkdownRenderer content="{msg.text}"/>
+                  <MarkdownRenderer content={msg.text} />
                 )}
               </div>
               <span className="text-[10px] text-slate-400 mt-1 px-1">{msg.timestamp}</span>
