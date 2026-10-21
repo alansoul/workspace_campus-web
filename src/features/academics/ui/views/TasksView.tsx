@@ -51,7 +51,7 @@ export function TasksView({
           value={newTaskTitle}
           onChange={(e) => onTitleChange(e.target.value)}
           placeholder="Add a task, deadline or reminder..."
-          className="flex-1 min-w-[200px] text-sm px-3 py-2 outline-hidden text-slate-800 placeholder:text-slate-400"
+          className="flex-1 min-w-50 text-sm px-3 py-2 outline-hidden text-slate-800 placeholder:text-slate-400"
         />
         <select
           value={newTaskPriority}

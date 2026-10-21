@@ -70,6 +70,41 @@ export function useAcademicsWorkspace() {
   const cachedUniId = typeof window !== 'undefined' ? localStorage.getItem('campus_university_id') : null;
   const currentUniversityId = user?.universityId || cachedUniId || null;
 
+  // Resolve dynamic university name from auth session or local cache
+  const currentUniversityName = useMemo(() => {
+    let storedName = '';
+    if (typeof window !== 'undefined') {
+      try {
+        const rawUser = localStorage.getItem('auth_user') || localStorage.getItem('campus_user');
+        if (rawUser) {
+          const parsed = JSON.parse(rawUser);
+          storedName = parsed.universityName || parsed.university?.name || parsed.collegeName || '';
+        }
+      } catch {}
+    }
+    const cachedName = typeof window !== 'undefined' ? localStorage.getItem('campus_university_name') : null;
+
+    return (
+      user?.universityName ||
+      (user as unknown as { university?: { name?: string } })?.university?.name ||
+      (user as unknown as { collegeName?: string })?.collegeName ||
+      storedName ||
+      cachedName ||
+      profileModule.institutionName
+    );
+  }, [user, profileModule.institutionName]);
+
+  // Synchronize profile with dynamic student and university credentials
+  const activeProfile = useMemo(() => {
+    return {
+      ...profileModule.profile,
+      name: currentUserName || profileModule.profile.name,
+      collegeName: currentUniversityName || profileModule.profile.collegeName,
+    };
+  }, [profileModule.profile, currentUserName, currentUniversityName]);
+
+  // Synchronized Timetable & Metadata State across all students
+
   // Synchronized Timetable & Metadata State across all students
   const [liveTimetable, setLiveTimetable] = useState<DayTimetable[]>(profileModule.timetable);
   const [liveRoomNo, setLiveRoomNo] = useState<string>(profileModule.roomNo);
@@ -187,13 +222,20 @@ export function useAcademicsWorkspace() {
     [profileModule, currentUniversityId],
   );
 
-  // Persist universityId to cache whenever user session updates
+  // Persist universityId & universityName to cache whenever user session updates
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (user?.universityId) {
       localStorage.setItem('campus_university_id', user.universityId);
     }
-  }, [user?.universityId]);
+    const uniName =
+      user?.universityName ||
+      (user as unknown as { university?: { name?: string } })?.university?.name ||
+      (user as unknown as { collegeName?: string })?.collegeName;
+    if (uniName) {
+      localStorage.setItem('campus_university_name', uniName);
+    }
+  }, [user]);
 
   // 2. Coursework, Attendance, Exams, Tasks, Drive (Scoped Strictly by University)
   const courseworkModule = useAcademicsCoursework(currentUserName, currentUniversityId);
@@ -988,13 +1030,13 @@ export function useAcademicsWorkspace() {
     setSearchQuery,
 
     // Profile & Meta
-    profile: profileModule.profile,
+    profile: activeProfile,
     updateProfile: profileModule.updateProfile,
     handleAvatarUpload: profileModule.handleAvatarUpload,
     todayFormatted: getFormattedToday(),
     greeting: getLiveGreeting(),
     isAdmin,
-    institutionName: profileModule.institutionName,
+    institutionName: currentUniversityName,
     roomNo: liveRoomNo || profileModule.roomNo,
     effectiveDate: liveEffectiveDate || profileModule.effectiveDate,
     // Branch & Semester

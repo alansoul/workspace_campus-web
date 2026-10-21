@@ -140,6 +140,30 @@ export function CampusAiDrawer({
 
   const activeModel = GEMINI_MODELS.find((m) => m.id === selectedModelId) || GEMINI_MODELS[0];
 
+  // Dynamically update initial greeting once real student profile & university name load
+  useEffect(() => {
+    if (!profile?.name && !profile?.collegeName) return;
+
+    const timer = setTimeout(() => {
+      setMessages((prev) => {
+        // Only refresh initial greeting if user has not started a conversation yet
+        if (prev.length <= 1) {
+          return [
+            {
+              id: 'msg-1',
+              sender: 'assistant',
+              text: `Hello ${profile.name || 'Student'}! I am your Campus AI Copilot for ${profile.collegeName || 'your University'}. Ready to assist with ${profile.branch || 'Academic'} coursework and exams.`,
+              timestamp: 'Just now',
+            },
+          ];
+        }
+        return prev;
+      });
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [profile?.name, profile?.collegeName, profile?.branch]);
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
