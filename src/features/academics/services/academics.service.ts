@@ -120,6 +120,14 @@ export const academicsService = {
     }
   },
 
+  async deleteAttendance(subjectName: string): Promise<void> {
+    try {
+      await apiFetch(`/universities/attendance/${encodeURIComponent(subjectName)}`, {
+        method: 'DELETE',
+      });
+    } catch {}
+  },
+
   async logAttendance(
     subjectName: string,
     attended: boolean,

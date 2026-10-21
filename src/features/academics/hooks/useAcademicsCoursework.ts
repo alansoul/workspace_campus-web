@@ -168,13 +168,29 @@ export function useAcademicsCoursework(
           });
         }
 
-        // Attendance: Merge without wiping user's attendance records
-        if (backendAttendance.status === 'fulfilled' && Array.isArray(backendAttendance.value) && backendAttendance.value.length > 0) {
+        // Attendance: Merge without re-adding deleted items
+        if (
+          backendAttendance.status === 'fulfilled' &&
+          Array.isArray(backendAttendance.value) &&
+          backendAttendance.value.length > 0
+        ) {
+          const deletedList: string[] =
+            typeof window !== 'undefined'
+              ? JSON.parse(
+                  localStorage.getItem(`${storagePrefix}_deleted_attendance`) || '[]',
+                )
+              : [];
+
           setAttendance((prevLocal) => {
-            const serverMap = new Map(backendAttendance.value.map((a) => [a.subject.toLowerCase(), a]));
-            const merged = [...backendAttendance.value];
+            const serverMap = new Map(
+              backendAttendance.value
+                .filter((a) => !deletedList.includes(a.subject.trim().toLowerCase()))
+                .map((a) => [a.subject.toLowerCase(), a]),
+            );
+            const merged = [...serverMap.values()];
             for (const local of prevLocal) {
-              if (!serverMap.has(local.subject.toLowerCase())) {
+              const localKey = local.subject.toLowerCase();
+              if (!serverMap.has(localKey) && !deletedList.includes(localKey)) {
                 merged.push(local);
               }
             }
@@ -548,15 +564,43 @@ export function useAcademicsCoursework(
     [],
   );
 
-  const deleteAttendanceSubject = (subjectName: string) => {
-    setAttendance((prev) => {
-      const updated = prev.filter((item) => item.subject !== subjectName);
+  const deleteAttendanceSubject = useCallback(
+    async (subjectName: string) => {
+      const norm = subjectName.trim().toLowerCase();
+
+      // 1. Record in local blacklist so it never resurrects during reloads
       if (typeof window !== 'undefined') {
-        localStorage.setItem('campus_attendance', JSON.stringify(updated));
+        const deletedList: string[] = JSON.parse(
+          localStorage.getItem(`${storagePrefix}_deleted_attendance`) || '[]',
+        );
+        if (!deletedList.includes(norm)) {
+          deletedList.push(norm);
+          localStorage.setItem(
+            `${storagePrefix}_deleted_attendance`,
+            JSON.stringify(deletedList),
+          );
+        }
       }
-      return updated;
-    });
-  };
+
+      // 2. Remove immediately from UI state and local storage
+      setAttendance((prev) => {
+        const updated = prev.filter(
+          (item) => item.subject.trim().toLowerCase() !== norm,
+        );
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`${storagePrefix}_attendance`, JSON.stringify(updated));
+          localStorage.setItem('campus_attendance', JSON.stringify(updated));
+        }
+        return updated;
+      });
+
+      // 3. Permanently delete from PostgreSQL database
+      try {
+        await academicsService.deleteAttendance(subjectName);
+      } catch {}
+    },
+    [storagePrefix, setAttendance],
+  );
 
   // Notice Handlers
   const markNoticeAsRead = useCallback((noticeId: string) => {
