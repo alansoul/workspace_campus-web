@@ -78,6 +78,7 @@ export function AcademicsApp() {
 
     // Assessments & Attendance
     exams,
+    practicals,
     attendance,
     notices,
     markNoticeAsRead,
@@ -200,6 +201,12 @@ export function AcademicsApp() {
         timetable={timetable}
         assignments={assignments}
         notices={notices}
+        practicals={practicals}
+        exams={exams}
+        attendance={attendance}
+        events={events}
+        tasks={tasks}
+        driveFiles={activeDriveFiles}
         activeTab={activeTab}
         initialPrompt={activeAiPrompt}
         onClearInitialPrompt={() => setActiveAiPrompt('')}

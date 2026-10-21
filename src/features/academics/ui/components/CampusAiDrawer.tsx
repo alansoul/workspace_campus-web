@@ -11,8 +11,20 @@ import {
   DayTimetable,
   AssignmentItem,
   CampusNotice,
+  PracticalExperiment,
+  ExamItem,
+  AttendanceSubject,
+  CampusEvent,
+  AcademicTask,
+  DriveFile,
 } from '../../types/academics.types';
 import { apiFetch } from '@/lib/api';
+import { MarkdownRenderer } from './MarkdownRenderer';
+
+type EventWithMeta = CampusEvent & {
+  registeredCount?: number;
+  attendees?: unknown[];
+};
 
 
 
@@ -23,6 +35,12 @@ interface CampusAiDrawerProps {
   timetable?: DayTimetable[];
   assignments?: AssignmentItem[];
   notices?: CampusNotice[];
+  practicals?: PracticalExperiment[];
+  exams?: ExamItem[];
+  attendance?: AttendanceSubject[];
+  events?: CampusEvent[];
+  tasks?: AcademicTask[];
+  driveFiles?: DriveFile[];
   activeTab?: string;
   initialPrompt?: string;
   onClearInitialPrompt?: () => void;
@@ -72,7 +90,13 @@ export function CampusAiDrawer({
   timetable = [],
   assignments = [],
   notices = [],
-  activeTab = 'timetable',
+  practicals = [],
+  exams = [],
+  attendance = [],
+  events = [],
+  tasks = [],
+  driveFiles = [],
+  activeTab = 'dashboard',
   initialPrompt,
   onClearInitialPrompt,
 }: CampusAiDrawerProps) {
@@ -194,27 +218,28 @@ export function CampusAiDrawer({
     }
   };
 
-  // Extracts live screen data while strictly scrubbing emails and private profile data
+  // Extracts live multi-module workspace data while strictly redacting PII
   const generatePageContextString = (): string => {
     if (!readPageContext) return '';
 
-    // 1. Strict Privacy Shield: If viewing the Profile view, do NOT send personal profile credentials
+    // 1. Strict Privacy Shield: If viewing profile, never leak roll number or email
     if (activeTab === 'profile') {
       return `
 === ACTIVE SCREEN CONTEXT ===
-Screen Tab: PROFILE SETTINGS
-[PRIVACY RESTRICTION: The user is viewing their private profile and account settings. All personal emails, roll numbers, contact records, and credentials are redacted and hidden for security.]
+Screen Tab: PROFILE
+[PRIVACY RESTRICTION: The student is viewing their private profile. All contact emails, phone numbers, and credentials are strictly private and hidden.]
 `;
     }
 
     const now = new Date();
-    const liveTimeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const liveTimeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const liveDateStr = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
     // Scrub any email pattern found anywhere in screen text
     const scrubEmails = (text: string) =>
       text.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi, '[PROTECTED_EMAIL]');
 
+    // 1. Timetable: Today & Weekly
     const todaySchedule = timetable.find((d) => d.isToday) || timetable[0];
     const todaySlotsSummary = todaySchedule?.slots?.length
       ? todaySchedule.slots
@@ -225,17 +250,86 @@ Screen Tab: PROFILE SETTINGS
           .join('\n')
       : 'No scheduled classes today';
 
-    const fullWeekSummary = timetable
-      .map((d) => `${d.day} (${d.slots.length} periods): ${d.slots.map((s) => s.subjectName).join(', ')}`)
-      .join('\n');
+    const fullWeekSummary = timetable.length
+      ? timetable
+          .map((d) => `${d.day} (${d.slots.length} periods): ${d.slots.map((s) => s.subjectName).join(', ')}`)
+          .join('\n')
+      : 'No weekly schedule available';
 
-    const assignmentsSummary = assignments
-      .map((a) => `- ${a.title} [${a.subject}] | Status: ${a.status} | Priority: ${a.priority} | Due: ${a.dueDate}`)
-      .join('\n');
+    // 2. Attendance Analytics
+    const attendanceSummary = attendance.length
+      ? attendance
+          .map(
+            (a) =>
+              `- ${a.subject}: ${a.attendancePct}% (${a.attended}/${a.totalClasses} classes attended) ${a.isWarning ? '⚠️ [BELOW 75%]' : '✅ [ON TRACK]'}`,
+          )
+          .join('\n')
+      : 'No attendance records logged';
 
-    const noticesSummary = notices
-      .map((n) => `- [${n.category}] ${n.title} (${n.dateStr}): ${n.summary}`)
-      .join('\n');
+    // 3. Practicals & Labs
+    const practicalsSummary = practicals.length
+      ? practicals
+          .map(
+            (p) =>
+              `- [${p.subject}] "${p.title}" | Lab: ${p.labName || p.labRoom || 'Main Lab'} | Faculty: ${p.faculty} | Due: ${p.dueInDaysText || 'Soon'} | Status: ${p.completed ? 'Completed' : 'Pending'}`,
+          )
+          .join('\n')
+      : 'No practical experiments listed';
+
+    // 4. Exams Schedule
+    const examsSummary = exams.length
+      ? exams
+          .map(
+            (e) =>
+              `- [${e.subject}] "${e.title}" (${e.type}) | Date: ${e.dateStr} at ${e.timeStr || 'TBD'} | Room: ${e.room || 'TBD'} | Syllabus: ${e.syllabus || 'See departmental syllabus'}`,
+          )
+          .join('\n')
+      : 'No examinations scheduled';
+
+    // 5. Assignments & Coursework
+    const assignmentsSummary = assignments.length
+      ? assignments
+          .map((a) => `- ${a.title} [${a.subject}] | Status: ${a.status} | Priority: ${a.priority} | Due: ${a.dueDate}`)
+          .join('\n')
+      : 'No pending coursework';
+
+    // 6. Lecture Drive Files & Notes
+    const driveSummary = driveFiles.length
+      ? driveFiles
+          .slice(0, 10)
+          .map((f) => `- [${f.category}] ${f.name} (${f.subject}) | Size: ${f.size} | Uploaded: ${f.uploadDate}`)
+          .join('\n')
+      : 'No drive materials uploaded';
+
+    // 7. Campus Events & Hackathons
+    const eventsSummary = events.length
+      ? events
+          .map((ev) => {
+            const item = ev as EventWithMeta;
+            const rsvpCount =
+              item.registeredCount ?? (Array.isArray(item.attendees) ? item.attendees.length : 0);
+            return `- [${item.category}] "${item.title}" | When: ${item.dateTimeStr} | Venue: ${item.venue} | RSVPs: ${rsvpCount}`;
+          })
+          .join('\n')
+      : 'No upcoming campus events';
+
+    // 8. Academic Tasks & To-Dos
+    const tasksSummary = tasks.length
+      ? tasks
+          .map(
+            (t) =>
+              `- [${t.priority} Priority] ${t.title} (${t.category}) | Status: ${t.completed ? 'Completed' : 'Pending'} | Due: ${t.dueDateText || 'Soon'}`,
+          )
+          .join('\n')
+      : 'No personal tasks added';
+
+    // 9. Notices & Circulars
+    const noticesSummary = notices.length
+      ? notices
+          .slice(0, 6)
+          .map((n) => `- [${n.category}] ${n.title} (${n.dateStr}): ${n.summary}`)
+          .join('\n')
+      : 'No active notices';
 
     const rawContext = `
 === LIVE CLOCK ===
@@ -243,21 +337,39 @@ Time: ${liveTimeStr}
 Date: ${liveDateStr}
 
 === ACTIVE SCREEN CONTEXT ===
-Screen Tab: ${activeTab.toUpperCase()}
+Active Tab: ${activeTab.toUpperCase()}
 Student: ${profile.name} (${profile.branch}, Sem ${profile.semester})
 Institution: ${profile.collegeName}
 
-=== TODAY'S SCHEDULE (${todaySchedule?.day?.toUpperCase() || 'TODAY'}) ===
+=== TODAY'S TIMETABLE ===
 ${todaySlotsSummary}
 
-=== WEEKLY MATRIX ===
+=== WEEKLY TIMETABLE ===
 ${fullWeekSummary}
 
-=== COURSEWORK ON SCREEN ===
-${assignmentsSummary || 'No pending coursework'}
+=== ATTENDANCE TRACKER ===
+${attendanceSummary}
 
-=== NOTICES ON SCREEN ===
-${noticesSummary || 'No active notices'}
+=== PRACTICALS & LAB EXPERIMENTS ===
+${practicalsSummary}
+
+=== EXAM SCHEDULES ===
+${examsSummary}
+
+=== COURSEWORK ASSIGNMENTS ===
+${assignmentsSummary}
+
+=== LECTURE DRIVE MATERIALS ===
+${driveSummary}
+
+=== CAMPUS EVENTS & WORKSHOPS ===
+${eventsSummary}
+
+=== ACADEMIC TASKS / TO-DO ===
+${tasksSummary}
+
+=== CAMPUS NOTICES & CIRCULARS ===
+${noticesSummary}
 `;
 
     return scrubEmails(rawContext);
@@ -519,13 +631,17 @@ ${noticesSummary || 'No active notices'}
               className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
             >
               <div
-                className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed whitespace-pre-wrap ${
+                className={`max-w-[88%] rounded-2xl p-3.5 text-xs leading-relaxed ${
                   msg.sender === 'user'
-                    ? 'bg-indigo-600 text-white rounded-br-xs'
-                    : 'bg-slate-100 text-slate-800 rounded-bl-xs'
+                    ? 'bg-indigo-600 text-white rounded-br-xs whitespace-pre-wrap'
+                    : 'bg-slate-100 text-slate-800 rounded-bl-xs shadow-xs border border-slate-200/50'
                 }`}
               >
-                {msg.text}
+                {msg.sender === 'user' ? (
+                  msg.text
+                ) : (
+                  <MarkdownRenderer content="{msg.text}"/>
+                )}
               </div>
               <span className="text-[10px] text-slate-400 mt-1 px-1">{msg.timestamp}</span>
             </div>
