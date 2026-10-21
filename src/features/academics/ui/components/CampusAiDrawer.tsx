@@ -14,6 +14,8 @@ import {
 } from '../../types/academics.types';
 import { apiFetch } from '@/lib/api';
 
+
+
 interface CampusAiDrawerProps {
   isOpen: boolean;
   onToggle: () => void;
@@ -192,13 +194,26 @@ export function CampusAiDrawer({
     }
   };
 
-  // Extracts live screen data & system clock for the AI prompt
+  // Extracts live screen data while strictly scrubbing emails and private profile data
   const generatePageContextString = (): string => {
     if (!readPageContext) return '';
+
+    // 1. Strict Privacy Shield: If viewing the Profile view, do NOT send personal profile credentials
+    if (activeTab === 'profile') {
+      return `
+=== ACTIVE SCREEN CONTEXT ===
+Screen Tab: PROFILE SETTINGS
+[PRIVACY RESTRICTION: The user is viewing their private profile and account settings. All personal emails, roll numbers, contact records, and credentials are redacted and hidden for security.]
+`;
+    }
 
     const now = new Date();
     const liveTimeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const liveDateStr = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+    // Scrub any email pattern found anywhere in screen text
+    const scrubEmails = (text: string) =>
+      text.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi, '[PROTECTED_EMAIL]');
 
     const todaySchedule = timetable.find((d) => d.isToday) || timetable[0];
     const todaySlotsSummary = todaySchedule?.slots?.length
@@ -222,16 +237,15 @@ export function CampusAiDrawer({
       .map((n) => `- [${n.category}] ${n.title} (${n.dateStr}): ${n.summary}`)
       .join('\n');
 
-    return `
+    const rawContext = `
 === LIVE CLOCK ===
 Time: ${liveTimeStr}
 Date: ${liveDateStr}
 
 === ACTIVE SCREEN CONTEXT ===
 Screen Tab: ${activeTab.toUpperCase()}
-Student: ${profile.name} (Roll: ${profile.rollNumber}, ${profile.branch}, Sem ${profile.semester}, CGPA: ${profile.cgpa || '8.92'})
+Student: ${profile.name} (${profile.branch}, Sem ${profile.semester})
 Institution: ${profile.collegeName}
-Mentor: ${profile.mentor}
 
 === TODAY'S SCHEDULE (${todaySchedule?.day?.toUpperCase() || 'TODAY'}) ===
 ${todaySlotsSummary}
@@ -245,6 +259,8 @@ ${assignmentsSummary || 'No pending coursework'}
 === NOTICES ON SCREEN ===
 ${noticesSummary || 'No active notices'}
 `;
+
+    return scrubEmails(rawContext);
   };
 
   const handleSendMessage = async (textToSend?: string) => {
