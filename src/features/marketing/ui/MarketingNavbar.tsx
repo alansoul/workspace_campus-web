@@ -399,7 +399,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
               className="relative hidden shrink-0 sm:flex"
             >
               <div
-                className={`relative flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold tracking-wider text-white shadow-xs ring-2 ring-white/90 transition-all duration-200 hover:scale-105 hover:shadow-md overflow-hidden bg-gradient-to-tr ${avatarGradient}`}
+                className={`relative flex h-9 w-9 items-center justify-center rounded-full text-xs font-semibold tracking-wider text-white shadow-xs ring-2 ring-white/90 transition-all duration-200 hover:scale-105 hover:shadow-md overflow-hidden bg-linear-to-tr ${avatarGradient}`}
               >
                 {avatarImage ? (
                   <Image
