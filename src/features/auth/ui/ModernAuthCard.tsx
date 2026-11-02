@@ -62,17 +62,11 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
   const { login, refreshSession } = useAuthSession();
 
   // 🌐 PLACED HERE: Capture Google OAuth token from URL, set cookies, and redirect
+  // Capture Google OAuth token from URL, re-hydrate session, and redirect
   useEffect(() => {
     const oauthToken = searchParams.get('token');
 
     if (oauthToken) {
-      const isSecure =
-        typeof window !== 'undefined' && window.location.protocol === 'https:';
-      const flags = `path=/; max-age=604800; SameSite=Lax; ${isSecure ? 'Secure;' : ''}`;
-
-      // Set ONLY the cryptographically signed token cookie
-      document.cookie = `token=${encodeURIComponent(oauthToken)}; ${flags}`;
-
       // Re-hydrate session and immediately forward to dashboard
       refreshSession().then(() => {
         router.replace(redirectUrl);

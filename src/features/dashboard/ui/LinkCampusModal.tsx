@@ -76,7 +76,6 @@ export function LinkCampusModal({ open, onClose }: LinkCampusModalProps) {
 
       document.cookie = `account_type=INSTITUTIONAL; ${flags}`;
       if (res.accessToken) {
-        document.cookie = `token=${encodeURIComponent(res.accessToken)}; ${flags}`;
       }
 
       toast.success('Campus email linked successfully! Access granted.');

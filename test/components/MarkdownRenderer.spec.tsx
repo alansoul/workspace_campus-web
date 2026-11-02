@@ -57,8 +57,8 @@ describe('MarkdownRenderer Component', () => {
 
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-      'def solve_f2l():\n    return "Algorithm Executed"\n',
-    );
+  'def solve_f2l():\n    return "Algorithm Executed"',
+);
 
 
     await waitFor(() => {

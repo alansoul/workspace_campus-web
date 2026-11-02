@@ -1,46 +1,39 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useDomainResolver } from '../../src/features/auth/hooks/useDomainResolver';
-
 
 describe('useDomainResolver Hook', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
 
-
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
-
 
   it('initializes with default idle state when email input is empty', () => {
     const { result } = renderHook(() => useDomainResolver(''));
-
 
     expect(result.current.isResolving).toBe(false);
     expect(result.current.resolution).toBeNull();
   });
 
-
   it('identifies personal Gmail addresses without network requests', async () => {
-    const { result } = renderHook(
-      ({ email }: { email: string }) => useDomainResolver(email),
-      { initialProps: { email: 'student.personal@gmail.com' } },
+    const { result } = renderHook(() =>
+      useDomainResolver('student.personal@gmail.com'),
     );
 
-
-    vi.advanceTimersByTime(350);
-
-
-    await waitFor(() => {
-      expect(result.current.resolution).not.toBeNull();
-      expect(result.current.resolution?.isGmail).toBe(true);
-      expect(result.current.resolution?.isUniversity).toBe(false);
-      expect(result.current.resolution?.allowed).toBe(true);
+    // Advance fake timer by 500ms and drain microtasks
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
     });
-  });
 
+    expect(result.current.resolution).not.toBeNull();
+    expect(result.current.resolution?.isGmail).toBe(true);
+    expect(result.current.resolution?.isUniversity).toBe(false);
+    expect(result.current.resolution?.allowed).toBe(true);
+  });
 
   it('resolves accredited institutional domains via API response', async () => {
     const mockApiResponse = {
@@ -54,27 +47,24 @@ describe('useDomainResolver Hook', () => {
       },
     };
 
-
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => mockApiResponse,
     } as Response);
 
+    const { result } = renderHook(() =>
+      useDomainResolver('student@iiitnr.edu.in'),
+    );
 
-    const { result } = renderHook(() => useDomainResolver('student@iiitnr.edu.in'));
-
-
-    vi.advanceTimersByTime(350);
-
-
-    await waitFor(() => {
-      expect(result.current.resolution).not.toBeNull();
-      expect(result.current.resolution?.allowed).toBe(true);
-      expect(result.current.resolution?.isUniversity).toBe(true);
-      expect(result.current.resolution?.university?.shortCode).toBe('IIITNR');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
     });
-  });
 
+    expect(result.current.resolution).not.toBeNull();
+    expect(result.current.resolution?.allowed).toBe(true);
+    expect(result.current.resolution?.isUniversity).toBe(true);
+    expect(result.current.resolution?.university?.shortCode).toBe('IIITNR');
+  });
 
   it('flags unregistered commercial domains as disallowed', async () => {
     const mockApiResponse = {
@@ -84,22 +74,20 @@ describe('useDomainResolver Hook', () => {
       error: 'DOMAIN_UNREGISTERED',
     };
 
-
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => mockApiResponse,
     } as Response);
 
+    const { result } = renderHook(() =>
+      useDomainResolver('intruder@randomcorp.com'),
+    );
 
-    const { result } = renderHook(() => useDomainResolver('intruder@randomcorp.com'));
-
-
-    vi.advanceTimersByTime(350);
-
-
-    await waitFor(() => {
-      expect(result.current.resolution).not.toBeNull();
-      expect(result.current.resolution?.allowed).toBe(false);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
     });
+
+    expect(result.current.resolution).not.toBeNull();
+    expect(result.current.resolution?.allowed).toBe(false);
   });
 });

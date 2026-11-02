@@ -67,7 +67,7 @@ export default function SettingsPage() {
 
       document.cookie = `account_type=INDIVIDUAL; ${flags}`;
       if (res?.accessToken) {
-        document.cookie = `token=${encodeURIComponent(res.accessToken)}; ${flags}`;
+
       }
 
       toast.success('University email unlinked. Account is Individual again.');
