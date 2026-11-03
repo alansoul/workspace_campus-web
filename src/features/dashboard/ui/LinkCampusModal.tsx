@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { apiFetch } from '@/lib/api';
+import { axiosInstance } from '@/lib/api';
 import { useAuthSession } from '@/features/auth/hooks/useAuthSession';
 import { useSearchParams } from 'next/navigation';
 import { ShieldCheck, X, Mail } from 'lucide-react';
@@ -30,15 +30,12 @@ export function LinkCampusModal({ open, onClose }: LinkCampusModalProps) {
     setIsLoading(true);
 
     try {
-      const res = await apiFetch<{ message: string; universityName?: string }>(
-        '/auth/campus/link/request',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            institutionalEmail: institutionalEmail.trim().toLowerCase(),
-          }),
-        },
-      );
+      const { data: res } = await axiosInstance.post<{
+        message: string;
+        universityName?: string;
+      }>('/auth/campus/link/request', {
+        institutionalEmail: institutionalEmail.trim().toLowerCase(),
+      });
 
       toast.success(res.message || 'Verification code sent to your email!');
       setStep('otp');
@@ -58,17 +55,13 @@ export function LinkCampusModal({ open, onClose }: LinkCampusModalProps) {
     setIsLoading(true);
 
     try {
-      // ✅ FIXED: Used 'institutionalEmail' (not undefined 'email')
-      const res = await apiFetch<{ accessToken?: string; message?: string }>(
-        '/auth/campus/link/verify',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            institutionalEmail: institutionalEmail.trim().toLowerCase(),
-            otp: otp.trim(),
-          }),
-        },
-      );
+      const { data: res } = await axiosInstance.post<{
+        accessToken?: string;
+        message?: string;
+      }>('/auth/campus/link/verify', {
+        institutionalEmail: institutionalEmail.trim().toLowerCase(),
+        otp: otp.trim(),
+      });
 
       // 1. Immediately upgrade browser cookies to INSTITUTIONAL
       const isSecure = window.location.protocol === 'https:';
