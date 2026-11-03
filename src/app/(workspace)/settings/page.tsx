@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthSession } from '@/features/auth/hooks/useAuthSession';
-import { apiFetch } from '@/lib/api';
+import { axiosInstance } from '@/lib/api';
 import { toast } from 'sonner';
 import {
   Settings,
@@ -56,10 +56,10 @@ export default function SettingsPage() {
 
     setIsUnlinking(true);
     try {
-      const res = await apiFetch<{ accessToken?: string; message?: string }>(
-        '/auth/campus/unlink',
-        { method: 'POST' },
-      );
+      const { data: res } = await axiosInstance.post<{
+        accessToken?: string;
+        message?: string;
+      }>('/auth/campus/unlink');
 
       // 1. Immediately downgrade cookies on workspace-campus-web.vercel.app
       const isSecure = window.location.protocol === 'https:';
