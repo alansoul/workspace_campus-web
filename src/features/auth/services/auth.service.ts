@@ -1,9 +1,6 @@
 // campus-web/src/features/auth/services/auth.service.ts
-import { apiClient, apiFetch } from '@/lib/api';
+import { axiosInstance } from '@/lib/api';
 import { AuthResponse, DomainResolution, LoginPayload } from '../types/auth.types';
-
-// Safe fetcher fallback
-const request = apiClient || apiFetch;
 
 export const authService = {
   // Resolve university domain (passes both full email and extracted domain)
@@ -13,27 +10,33 @@ export const authService = {
       ? cleanEmail.split('@')[1] || ''
       : cleanEmail;
 
-    return request<DomainResolution>(
-      `/auth/resolve-domain?email=${encodeURIComponent(cleanEmail)}&domain=${encodeURIComponent(domain)}`,
+    const { data } = await axiosInstance.get<DomainResolution>(
+      '/auth/resolve-domain',
+      {
+        params: { email: cleanEmail, domain },
+      },
     );
+    return data;
   },
 
   // Login
   async login(payload: LoginPayload): Promise<AuthResponse> {
-    return request<AuthResponse>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    const { data } = await axiosInstance.post<AuthResponse>(
+      '/auth/login',
+      payload,
+    );
+    return data;
   },
 
   // Hydrate session from cookie
   async getCurrentSession(): Promise<AuthResponse> {
-    return request<AuthResponse>('/auth/me');
+    const { data } = await axiosInstance.get<AuthResponse>('/auth/me');
+    return data;
   },
 
   // Logout
   async logout(): Promise<void> {
-    await request('/auth/logout', { method: 'POST' });
+    await axiosInstance.post('/auth/logout');
   },
 };
 
