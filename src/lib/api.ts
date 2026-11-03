@@ -1,101 +1,89 @@
 // campus-web/src/lib/api.ts
+import axios, {
+  AxiosError,
+  type AxiosRequestConfig,
+  type InternalAxiosRequestConfig,
+} from 'axios';
 
 export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
-    public data?: unknown
+    public data?: unknown,
   ) {
     super(message);
     this.name = 'ApiError';
   }
 }
 
-// Proxied base URL: Relative /api for Vercel Next.js rewrites, or direct Render URL
-const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://workspace-campus-api.onrender.com/api';
+// Proxied base URL: Relative /api for Next.js rewrites, or direct Render URL
+const RAW_API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  'https://workspace-campus-api.onrender.com/api';
 const API_URL = RAW_API_URL.replace(/\/+$/, '');
 
-function resolveUrl(path: string): string {
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    return path;
-  }
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  if (API_URL.endsWith('/api') && cleanPath.startsWith('/api/')) {
-    return `${API_URL}${cleanPath.slice(4)}`;
-  }
-  return `${API_URL}${cleanPath}`;
+// Create pre-configured Axios instance
+export const axiosInstance = axios.create({
+  baseURL: API_URL,
+  withCredentials: true, // Always include HttpOnly session cookies
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Extend Axios config type for internal retry tracking
+interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
+  _retryCount?: number;
 }
 
-/**
- * Enterprise Production API Client:
- * - ZERO localStorage dependency (immune to client-side token theft)
- * - Pure HttpOnly Cookie forwarding via credentials: 'include'
- * - Graceful handling & auto-retry for Render cold boots & gateway 502 errors
- */
-export async function apiFetch<T = unknown>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const url = resolveUrl(path);
+// ---------------------------------------------------------------------------
+// Response Interceptor: 502 Cold Boot Retries & 401 Protected Route Redirects
+// ---------------------------------------------------------------------------
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const config = error.config as CustomAxiosRequestConfig | undefined;
 
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      credentials: 'include', // Automatically passes and receives httpOnly cookies
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
-
-    // ⚡ Auto-retry once after 2 seconds if Render is waking up (502 Bad Gateway)
-    if (res.status === 502) {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      res = await fetch(url, {
-        credentials: 'include',
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-      });
+    // ⚡ 1. Render Free Tier 502 Cold Boot Auto-Retry (Max 1 retry after 2.5s)
+    if (
+      error.response?.status === 502 &&
+      config &&
+      (!config._retryCount || config._retryCount < 1)
+    ) {
+      config._retryCount = (config._retryCount || 0) + 1;
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      return axiosInstance(config);
     }
-  } catch {
-    throw new ApiError(
-      0,
-      'Backend unreachable. If using Render Free Tier, the instance may be waking up.'
-    );
-  }
 
-  // 401 Unauthorized: Session is expired or invalid
-  if (res.status === 401 && typeof window !== 'undefined') {
-    const currentPath = window.location.pathname;
-    const isPublic =
-      currentPath === '/' ||
-      currentPath === '/academics' ||
-      currentPath === '/chat' ||
-      currentPath === '/freelance' ||
-      currentPath.startsWith('/login') ||
-      currentPath.startsWith('/register') ||
-      currentPath.startsWith('/setup');
+    // 🔒 2. 401 Unauthorized: Session expired or invalid
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      const currentPath = window.location.pathname;
+      const isPublic =
+        currentPath === '/' ||
+        currentPath === '/academics' ||
+        currentPath === '/chat' ||
+        currentPath === '/freelance' ||
+        currentPath.startsWith('/login') ||
+        currentPath.startsWith('/register') ||
+        currentPath.startsWith('/setup');
 
-    // Immediate browser redirect preserving return path (only on protected routes)
-    if (!isPublic) {
-      const loginUrl = new URL('/login', window.location.origin);
-      loginUrl.searchParams.set('redirect', currentPath + window.location.search);
-      window.location.replace(loginUrl.toString());
+      if (!isPublic) {
+        const loginUrl = new URL('/login', window.location.origin);
+        loginUrl.searchParams.set(
+          'redirect',
+          currentPath + window.location.search,
+        );
+        window.location.replace(loginUrl.toString());
+      }
     }
-  }
 
-  // Safely parse JSON or return null if HTML error page was returned
-  const data = await res.json().catch(() => null);
+    // 🚨 3. Standardize API Error output format
+    const status = error.response?.status || 0;
+    let errorMessage = error.message || 'Network request failed';
+    const errorData = error.response?.data;
 
-  if (!res.ok) {
-    let errorMessage = `Error ${res.status}: Request failed`;
-
-    if (data && typeof data === 'object') {
-      const payload = data as { message?: unknown; error?: string };
+    if (errorData && typeof errorData === 'object') {
+      const payload = errorData as { message?: unknown; error?: string };
       if (Array.isArray(payload.message)) {
         errorMessage = payload.message.join(', ');
       } else if (typeof payload.message === 'string') {
@@ -105,10 +93,41 @@ export async function apiFetch<T = unknown>(
       }
     }
 
-    throw new ApiError(res.status, errorMessage, data);
+    return Promise.reject(new ApiError(status, errorMessage, errorData));
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Backward-Compatible Wrapper for Existing Components
+// ---------------------------------------------------------------------------
+export async function apiFetch<T = unknown>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase();
+  const url = path.startsWith('/api/') ? path.replace(/^\/api/, '') : path;
+
+  let requestData: unknown = undefined;
+  if (options.body) {
+    try {
+      requestData =
+        typeof options.body === 'string'
+          ? (JSON.parse(options.body) as unknown)
+          : options.body;
+    } catch {
+      requestData = options.body;
+    }
   }
 
-  return data as T;
+  const axiosConfig: AxiosRequestConfig = {
+    url,
+    method,
+    data: requestData,
+    headers: options.headers as AxiosRequestConfig['headers'],
+  };
+
+  const response = await axiosInstance.request<T>(axiosConfig);
+  return response.data;
 }
 
 export const apiClient = apiFetch;

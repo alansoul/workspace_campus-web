@@ -110,7 +110,7 @@ export function useAcademicsWorkspace() {
   const [liveRoomNo, setLiveRoomNo] = useState<string>(profileModule.roomNo);
   const [liveEffectiveDate, setLiveEffectiveDate] = useState<string>(profileModule.effectiveDate);
 
-  // Fetch from PostgreSQL whenever branch, semester, or university changes
+  
   const refreshTimetable = useCallback(async () => {
     try {
       const data = await academicsService.getTimetable(

@@ -117,7 +117,7 @@ export function useChat(activeUser?: { id?: string; fullName?: string; email?: s
     };
   }, [activeUser?.id]);
 
-  // 2. Fetch Messages and Join Room
+  
   useEffect(() => {
     if (!currentChannel) return;
 

@@ -15,7 +15,7 @@ import {
   Lock,
   Sparkles,
 } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { axiosInstance } from '@/lib/api';
 import { ForgotPasswordForm } from './ForgotPasswordForm';
 import { GoogleOAuthButton } from './GoogleOAuthButton';
 import { AuthBackground } from './AuthBackground';
@@ -134,12 +134,9 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
           throw new Error('Please enter your full name.');
         }
 
-        await apiFetch('/auth/otp/request', {
-          method: 'POST',
-          body: JSON.stringify({
-            email: normalizedEmail,
-            purpose: mode === 'signup' ? 'REGISTER' : 'LOGIN',
-          }),
+        await axiosInstance.post('/auth/otp/request', {
+          email: normalizedEmail,
+          purpose: mode === 'signup' ? 'REGISTER' : 'LOGIN',
         });
 
         setStep('verify-otp');
@@ -195,7 +192,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
     setIsLoading(true);
 
     try {
-      const res = await apiFetch<{
+      const { data: res } = await axiosInstance.post<{
         message?: string;
         requiresPasswordSetup?: boolean;
         user: {
@@ -206,12 +203,9 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
           universityName?: string | null;
         };
       }>('/auth/otp/verify', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: normalizedEmail,
-          otp: otp.trim(),
-          fullName: mode === 'signup' ? name.trim() || undefined : undefined,
-        }),
+        email: normalizedEmail,
+        otp: otp.trim(),
+        fullName: mode === 'signup' ? name.trim() || undefined : undefined,
       });
 
       if (!res?.user) {
@@ -257,7 +251,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
         throw new Error('Passwords do not match.');
       }
 
-      const res = await apiFetch<{
+      const { data: res } = await axiosInstance.post<{
         message?: string;
         user: {
           id: string;
@@ -267,12 +261,9 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
           universityName?: string | null;
         };
       }>('/auth/password/set', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: normalizedEmail,
-          password,
-          fullName: name.trim() || undefined,
-        }),
+        email: normalizedEmail,
+        password,
+        fullName: name.trim() || undefined,
       });
 
       if (res?.user) {
@@ -300,12 +291,9 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
     }
     setIsLoading(true);
     try {
-      await apiFetch('/auth/otp/request', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: normalizedEmail,
-          purpose: 'RESET_PASSWORD',
-        }),
+      await axiosInstance.post('/auth/otp/request', {
+        email: normalizedEmail,
+        purpose: 'RESET_PASSWORD',
       });
       setStep('forgot-password');
     } catch (err: unknown) {
@@ -320,12 +308,9 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
     setIsLoading(true);
 
     try {
-      await apiFetch('/auth/otp/request', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: normalizedEmail,
-          purpose: mode === 'signup' ? 'REGISTER' : 'LOGIN',
-        }),
+      await axiosInstance.post('/auth/otp/request', {
+        email: normalizedEmail,
+        purpose: mode === 'signup' ? 'REGISTER' : 'LOGIN',
       });
       setMessage(`A new verification code was sent to ${normalizedEmail}.`);
     } catch (err: unknown) {

@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import type { AxiosResponse } from 'axios';
 import { useDomainResolver } from '../../src/features/auth/hooks/useDomainResolver';
+import { axiosInstance } from '../../src/lib/api';
 
 describe('useDomainResolver Hook', () => {
   beforeEach(() => {
@@ -47,6 +49,15 @@ describe('useDomainResolver Hook', () => {
       },
     };
 
+    // Intercept Axios requests (both get and request) and native fetch calls
+    vi.spyOn(axiosInstance, 'get').mockResolvedValue({
+      data: mockApiResponse,
+    } as unknown as AxiosResponse);
+
+    vi.spyOn(axiosInstance, 'request').mockResolvedValue({
+      data: mockApiResponse,
+    } as unknown as AxiosResponse);
+
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => mockApiResponse,
@@ -73,6 +84,15 @@ describe('useDomainResolver Hook', () => {
       isGmail: false,
       error: 'DOMAIN_UNREGISTERED',
     };
+
+    // Intercept Axios requests (both get and request) and native fetch calls
+    vi.spyOn(axiosInstance, 'get').mockResolvedValue({
+      data: mockApiResponse,
+    } as unknown as AxiosResponse);
+
+    vi.spyOn(axiosInstance, 'request').mockResolvedValue({
+      data: mockApiResponse,
+    } as unknown as AxiosResponse);
 
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
