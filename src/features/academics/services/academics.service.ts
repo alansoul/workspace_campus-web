@@ -128,6 +128,13 @@ export const academicsService = {
     } catch {}
   },
 
+  async updateAssignmentStatus(id: string, status: string): Promise<void> {
+    await apiFetch(`/universities/assignments/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  },
+
   async logAttendance(
     subjectName: string,
     attended: boolean,
@@ -151,13 +158,6 @@ export const academicsService = {
     } catch {
       return [];
     }
-  },
-
-  async updateAssignmentStatus(id: string, status: string): Promise<void> {
-    await apiFetch(`/universities/assignments/${id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status }),
-    });
   },
 
   // 4. Campus Events
@@ -192,7 +192,7 @@ export const academicsService = {
 
   async toggleEventRSVP(eventId: string, interested: boolean): Promise<CampusEvent | null> {
     try {
-      return await apiFetch<CampusEvent>(`/universities/events/${eventId}/interest`, {
+      return await apiFetch<CampusEvent>(`/universities/events/${encodeURIComponent(eventId)}/interest`, {
         method: 'POST',
         body: JSON.stringify({ interested }),
       });
@@ -255,7 +255,7 @@ export const academicsService = {
 
   async togglePracticalComplete(id: string, completed: boolean): Promise<void> {
     try {
-      await apiFetch(`/universities/practicals/${id}/complete`, {
+      await apiFetch(`/universities/practicals/${encodeURIComponent(id)}/complete`, {
         method: 'PATCH',
         body: JSON.stringify({ completed }),
       });
@@ -265,8 +265,13 @@ export const academicsService = {
   // 6. Drive & Lecture Materials (Strongly Typed, No Any)
   async getNotes(branch = 'CSE', semester = 1): Promise<DriveFile[]> {
     try {
+      const params = new URLSearchParams({
+        branch: String(branch || 'CSE'),
+        semester: String(semester ?? 1),
+      });
+
       const res = await apiFetch<BackendNoteItem[] | BackendNoteListResponse>(
-        `/universities/notes?branch=${branch}&semester=${semester}`,
+        `/universities/notes?${params.toString()}`,
         { method: 'GET' },
       );
 
@@ -378,9 +383,17 @@ export const academicsService = {
     universityId?: string | null,
   ): Promise<TimetableSyncResponse | null> {
     try {
-      const uniQuery = universityId ? `&universityId=${encodeURIComponent(universityId)}` : '';
+      const params = new URLSearchParams({
+        branch: String(branch || 'CSE'),
+        semester: String(semester ?? 1),
+      });
+
+      if (universityId) {
+        params.set('universityId', String(universityId));
+      }
+
       return await apiFetch<TimetableSyncResponse>(
-        `/universities/timetable?branch=${branch}&semester=${semester}${uniQuery}`,
+        `/universities/timetable?${params.toString()}`,
         { method: 'GET' },
       );
     } catch {
