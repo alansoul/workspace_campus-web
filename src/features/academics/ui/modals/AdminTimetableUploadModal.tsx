@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { CAMPUS_TIMETABLES_REGISTRY } from '../../data/academics.data';
 import type { DayTimetable, SubjectItem } from '../../types/academics.types';
 import type { BranchCode } from '../../hooks/useAcademicsWorkspace';
+import { axiosInstance } from '@/lib/api';
 
 interface ModalProps {
   isOpen: boolean;
@@ -131,28 +132,17 @@ export function AdminTimetableUploadModal({
         const base64Data = reader.result as string;
 
         try {
-          const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-          const apiUrl =
-            process.env.NEXT_PUBLIC_API_URL || 'https://workspace-campus-api.onrender.com/api';
-
-          const res = await fetch(`${apiUrl}/university/timetable/parse-document`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            credentials: 'include',
-            body: JSON.stringify({
+          const { data } = await axiosInstance.post<RawOcrResponse>(
+            '/university/timetable/parse-document',
+            {
               fileBase64: base64Data,
               mimeType: file.type || 'application/pdf',
               branch: currentBranch,
               semester: currentSemester,
-            }),
-          });
+            },
+          );
 
-          const data = (await res.json()) as RawOcrResponse;
-
-          if (res.ok && data.success) {
+          if (data.success) {
             const parsed = data.data || data;
             const rawTimetable = parsed.timetable || [];
 
@@ -174,7 +164,7 @@ export function AdminTimetableUploadModal({
                     faculty: s.faculty || 'Faculty',
                     isToday: false,
                   })),
-                })
+                }),
               );
 
               const derivedSubjects =
@@ -192,7 +182,7 @@ export function AdminTimetableUploadModal({
 
               setSelectedPreset('CUSTOM');
               setStatusMessage(
-                `✓ Gemini extracted ${formattedTimetable.length} days and ${derivedSubjects.length} unique courses!`
+                `✓ Gemini extracted ${formattedTimetable.length} days and ${derivedSubjects.length} unique courses!`,
               );
               setIsParsing(false);
               return;
@@ -200,10 +190,14 @@ export function AdminTimetableUploadModal({
           }
 
           // If AI extraction failed, show the specific server error
-          setErrorMessage(data.error || `Server responded with status ${res.status}.`);
+          setErrorMessage(data.error || 'Server failed to extract timetable.');
           setIsParsing(false);
-        } catch {
-          setErrorMessage('Network connection error while connecting to campus-api.');
+        } catch (err: unknown) {
+          const msg =
+            err instanceof Error
+              ? err.message
+              : 'Network connection error while connecting to campus-api.';
+          setErrorMessage(msg);
           setIsParsing(false);
         }
       };
@@ -212,6 +206,7 @@ export function AdminTimetableUploadModal({
       setErrorMessage('Could not read file from device.');
     }
   };
+  
 
   const handleApply = () => {
     if (selectedPreset === 'CUSTOM' && customParsedData) {
