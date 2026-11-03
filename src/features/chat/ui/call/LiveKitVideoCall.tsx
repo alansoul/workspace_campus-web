@@ -7,7 +7,7 @@ import {
   VideoConference,
   RoomAudioRenderer,
 } from '@livekit/components-react';
-import { apiFetch } from '@/lib/api';
+import { axiosInstance } from '@/lib/api';
 
 interface LiveKitVideoCallProps {
   roomName: string;
@@ -68,16 +68,19 @@ export function LiveKitVideoCall({
         'Campus Member';
 
       try {
-        const res = await apiFetch<{ token: string }>(
-          `/chat/livekit/token?room=${encodeURIComponent(
-            roomName
-          )}&userId=${encodeURIComponent(userId)}&username=${encodeURIComponent(
-            username
-          )}`
+        const { data: res } = await axiosInstance.get<{ token: string }>(
+          '/chat/livekit/token',
+          {
+            params: {
+              room: roomName,
+              userId,
+              username,
+            },
+          },
         );
 
         if (isMounted) {
-          if (res.token) {
+          if (res?.token) {
             setToken(res.token);
           } else {
             setTokenError(true);
