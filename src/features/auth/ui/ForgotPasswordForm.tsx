@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiFetch } from '@/lib/api';
+import { axiosInstance } from '@/lib/api';
 
 interface ForgotPasswordFormProps {
   email: string;
@@ -38,15 +38,12 @@ export function ForgotPasswordForm({
       if (password.length < 8) throw new Error('Password must be at least 8 characters.');
       if (password !== confirmPassword) throw new Error('Passwords do not match.');
 
-      const res = await apiFetch<{
+      const { data: res } = await axiosInstance.post<{
         user?: { role: string; universityName?: string | null };
       }>('/auth/password/reset', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: email.toLowerCase().trim(),
-          otp,
-          newPassword: password,
-        }),
+        email: email.toLowerCase().trim(),
+        otp,
+        newPassword: password,
       });
 
       if (res?.user) {
