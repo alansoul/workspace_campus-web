@@ -2,18 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getSocket } from '@/lib/socket';
+import { axiosInstance } from '@/lib/api';
 import { Channel, ChatMessage } from '../types/chat.types';
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'https://workspace-campus-api.onrender.com';
-
-// Helper to construct absolute URL if API_URL is relative or proxy-based
-const getApiEndpoint = (endpoint: string) => {
-  if (typeof window !== 'undefined' && API_URL.startsWith('/')) {
-    return `${window.location.origin}${API_URL}${endpoint}`;
-  }
-  return `${API_URL}${endpoint}`;
-};
 
 export interface OnlineMember {
   userId: string;
@@ -89,21 +79,25 @@ export function useChat(activeUser?: { id?: string; fullName?: string; email?: s
       try {
         const userId = activeUser?.id;
         const [channelsRes, directRes] = await Promise.all([
-          fetch(getApiEndpoint(`/chat/channels${userId ? `?userId=${userId}` : ''}`), { credentials: 'include' }),
-          userId ? fetch(getApiEndpoint(`/chat/direct?userId=${userId}`), { credentials: 'include' }) : Promise.resolve(null),
+          axiosInstance.get<Channel[]>('/chat/channels', {
+            params: userId ? { userId } : undefined,
+          }),
+          userId
+            ? axiosInstance.get<Channel[]>('/chat/direct', {
+                params: { userId },
+              })
+            : Promise.resolve(null),
         ]);
 
-        if (channelsRes.ok && isMounted) {
-          const channelData: Channel[] = await channelsRes.json();
-          setChannels(channelData);
-          if (channelData.length > 0) {
-            setCurrentChannel((prev) => prev ?? channelData[0]);
+        if (isMounted && channelsRes?.data) {
+          setChannels(channelsRes.data);
+          if (channelsRes.data.length > 0) {
+            setCurrentChannel((prev) => prev ?? channelsRes.data[0]);
           }
         }
 
-        if (directRes && directRes.ok && isMounted) {
-          const directData: Channel[] = await directRes.json();
-          setDirectChats(directData);
+        if (isMounted && directRes?.data) {
+          setDirectChats(directRes.data);
         }
       } catch (err) {
         console.error('Failed to load chat data:', err);
@@ -131,11 +125,13 @@ export function useChat(activeUser?: { id?: string; fullName?: string; email?: s
     const channelId = currentChannel.id;
     let isMounted = true;
 
-    fetch(getApiEndpoint(`/chat/channels/${channelId}/messages?limit=50`), { credentials: 'include' })
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: ChatMessage[]) => {
+    axiosInstance
+      .get<ChatMessage[]>(`/chat/channels/${channelId}/messages`, {
+        params: { limit: 50 },
+      })
+      .then(({ data }) => {
         if (isMounted) {
-          setMessages(data);
+          setMessages(data || []);
           setIsLoadingMessages(false);
         }
       })
@@ -187,19 +183,16 @@ export function useChat(activeUser?: { id?: string; fullName?: string; email?: s
     const formData = new FormData();
     formData.append('file', file);
 
-    const res = await fetch(getApiEndpoint('/chat/upload'), {
-      method: 'POST',
-      body: formData,
-      credentials: 'include',
-    });
-
-    if (!res.ok) throw new Error('File upload failed');
-    return (await res.json()) as {
+    const { data } = await axiosInstance.post<{
       fileUrl: string;
       fileName: string;
       fileType: string;
       fileSize: number;
-    };
+    }>('/chat/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    return data;
   };
 
   // 4. Send Message (Text + Attachments)
@@ -291,19 +284,10 @@ export function useChat(activeUser?: { id?: string; fullName?: string; email?: s
   const addFriendByEmail = async (friendEmail: string) => {
     if (!activeUser?.id) return { success: false, error: 'User not logged in' };
     try {
-      const res = await fetch(getApiEndpoint('/chat/direct'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          currentUserId: activeUser.id,
-          friendEmail: friendEmail.trim(),
-        }),
+      const { data } = await axiosInstance.post<Channel>('/chat/direct', {
+        currentUserId: activeUser.id,
+        friendEmail: friendEmail.trim(),
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        return { success: false, error: data.message || 'Failed to add friend' };
-      }
 
       setDirectChats((prev) => {
         const exists = prev.some((c) => c.id === data.id);
@@ -321,20 +305,16 @@ export function useChat(activeUser?: { id?: string; fullName?: string; email?: s
 
   const createGroup = async (name: string, description?: string) => {
     try {
-      const res = await fetch(getApiEndpoint('/chat/channels'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { data: newGroup } = await axiosInstance.post<Channel>(
+        '/chat/channels',
+        {
           name,
           description,
           userId: activeUser?.id || 'campus-user',
-        }),
-      });
-      if (res.ok) {
-        const newGroup = await res.json();
-        setChannels((prev) => [...prev, newGroup]);
-        setCurrentChannel(newGroup);
-      }
+        },
+      );
+      setChannels((prev) => [...prev, newGroup]);
+      setCurrentChannel(newGroup);
     } catch (err) {
       console.error('Failed to create group:', err);
     }
