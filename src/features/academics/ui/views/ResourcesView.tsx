@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAcademicsWorkspace } from '../../hooks/useAcademicsWorkspace';
+import { axiosInstance } from '@/lib/api';
 
 interface FacultyMember {
   id: string;
@@ -86,12 +87,12 @@ export function ResourcesView() {
     let isMounted = true;
     async function fetchServerResources() {
       try {
-        const res = await fetch('/api/university/resources');
-        if (res.ok && isMounted) {
-          const data = (await res.json()) as {
-            faculty?: FacultyMember[];
-            lostItems?: LostFoundItem[];
-          };
+        const { data } = await axiosInstance.get<{
+          faculty?: FacultyMember[];
+          lostItems?: LostFoundItem[];
+        }>('/university/resources');
+
+        if (isMounted && data) {
           if (Array.isArray(data.faculty) && data.faculty.length > 0) {
             setFaculty(data.faculty);
             localStorage.setItem('campus_resources_faculty', JSON.stringify(data.faculty));
@@ -137,22 +138,19 @@ export function ResourcesView() {
     reader.onload = async () => {
       try {
         const base64String = reader.result as string;
-        const res = await fetch('/api/university/faculty/auto-extract', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fileBase64: base64String,
-            mimeType: file.type || 'application/pdf',
-          }),
+        const { data: extractRes } = await axiosInstance.post<{
+          success: boolean;
+        }>('/university/faculty/auto-extract', {
+          fileBase64: base64String,
+          mimeType: file.type || 'application/pdf',
         });
 
-        if (res.ok) {
-          const freshRes = await fetch('/api/university/resources');
-          if (freshRes.ok) {
-            const data = (await freshRes.json()) as { faculty?: FacultyMember[] };
-            if (Array.isArray(data.faculty)) {
-              saveFacultyList(data.faculty);
-            }
+        if (extractRes?.success !== false) {
+          const { data: freshData } = await axiosInstance.get<{
+            faculty?: FacultyMember[];
+          }>('/university/resources');
+          if (Array.isArray(freshData?.faculty)) {
+            saveFacultyList(freshData.faculty);
           }
         } else {
           alert('Could not auto-extract faculty. Please check your backend GEMINI_API_KEY.');
