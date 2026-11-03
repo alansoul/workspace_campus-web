@@ -18,7 +18,7 @@ import {
   AcademicTask,
   DriveFile,
 } from '../../types/academics.types';
-import { apiFetch } from '@/lib/api';
+import { axiosInstance } from '@/lib/api';
 import { MarkdownRenderer } from './MarkdownRenderer';
 
 type EventWithMeta = CampusEvent & {
@@ -202,13 +202,11 @@ export function CampusAiDrawer({
     setTestResult(null);
 
     try {
-      const res = await apiFetch<{ valid: boolean; status: number; message: string }>(
-        '/ai/validate-key',
-        {
-          method: 'POST',
-          body: JSON.stringify({ apiKey: apiKeyInput.trim() }),
-        },
-      );
+      const { data: res } = await axiosInstance.post<{
+        valid: boolean;
+        status: number;
+        message: string;
+      }>('/ai/validate-key', { apiKey: apiKeyInput.trim() });
 
       setTestResult({
         valid: res.valid,
@@ -421,19 +419,19 @@ ${noticesSummary}
     try {
       const pageContext = generatePageContextString();
 
-      const res = await apiFetch<{ success: boolean; reply: string }>('/ai/chat', {
-        method: 'POST',
-        body: JSON.stringify({
-          model: activeModel.apiModel,
-          modelName: activeModel.name,
-          thinkingLevel,
-          userApiKey: customApiKey || undefined,
-          pageContext: pageContext || undefined,
-          messages: newHistory.map((m) => ({
-            role: m.sender === 'user' ? 'user' : 'assistant',
-            content: m.text,
-          })),
-        }),
+      const { data: res } = await axiosInstance.post<{
+        success: boolean;
+        reply: string;
+      }>('/ai/chat', {
+        model: activeModel.apiModel,
+        modelName: activeModel.name,
+        thinkingLevel,
+        userApiKey: customApiKey || undefined,
+        pageContext: pageContext || undefined,
+        messages: newHistory.map((m) => ({
+          role: m.sender === 'user' ? 'user' : 'assistant',
+          content: m.text,
+        })),
       });
 
       const aiMsg: AiChatMessage = {
