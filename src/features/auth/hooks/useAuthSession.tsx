@@ -98,6 +98,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (typeof window !== 'undefined') {
+        // Clear cached academic data, timetable caches, and MCP credentials from localStorage
+        const keysToRemove = Object.keys(localStorage).filter(
+          (key) => key.startsWith('campus_') || key.startsWith('mcp_') || key.startsWith('auth_'),
+        );
+        keysToRemove.forEach((key) => localStorage.removeItem(key));
+
         const currentPath = window.location.pathname;
 
         // Smart landing pages (/chat, /academics, /freelance) stay on that path to show public landing UI

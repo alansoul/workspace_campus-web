@@ -55,21 +55,14 @@ export function LinkCampusModal({ open, onClose }: LinkCampusModalProps) {
     setIsLoading(true);
 
     try {
-      const { data: res } = await axiosInstance.post<{
-        accessToken?: string;
-        message?: string;
-      }>('/auth/campus/link/verify', {
+      await axiosInstance.post('/auth/campus/link/verify', {
         institutionalEmail: institutionalEmail.trim().toLowerCase(),
         otp: otp.trim(),
       });
 
-      // 1. Immediately upgrade browser cookies to INSTITUTIONAL
+      // Account type is managed server-side; set client UI hint cookie only
       const isSecure = window.location.protocol === 'https:';
-      const flags = `path=/; max-age=604800; SameSite=Lax; ${isSecure ? 'Secure;' : ''}`;
-
-      document.cookie = `account_type=INSTITUTIONAL; ${flags}`;
-      if (res.accessToken) {
-      }
+      document.cookie = `account_type=INSTITUTIONAL; path=/; max-age=604800; SameSite=Lax; ${isSecure ? 'Secure;' : ''}`;
 
       toast.success('Campus email linked successfully! Access granted.');
 
