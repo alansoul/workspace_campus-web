@@ -7,6 +7,13 @@ export const copilotService = {
   ): Promise<Partial<CopilotMessage> & { quotaExceeded?: boolean; quotaRemaining?: number }> {
     const provider = (typeof window !== 'undefined' && localStorage.getItem('northstar_ai_provider')) || 'system';
     const userApiKey = (typeof window !== 'undefined' && localStorage.getItem('northstar_ai_key')) || '';
+    const authToken =
+      (typeof window !== 'undefined' &&
+        (localStorage.getItem('token') ||
+          localStorage.getItem('authToken') ||
+          localStorage.getItem('access_token') ||
+          localStorage.getItem('auth_token'))) ||
+      '';
 
     const baseUrl =
       (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_URL) ||
@@ -16,6 +23,7 @@ export const copilotService = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       },
       credentials: 'include',
       body: JSON.stringify({
@@ -29,7 +37,7 @@ export const copilotService = {
     });
 
     if (!res.ok) {
-      throw new Error('Failed to query Northstar AI Orchestrator');
+      throw new Error(`Failed to query Northstar AI Orchestrator (${res.status})`);
     }
 
     return res.json();

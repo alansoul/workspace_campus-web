@@ -22,7 +22,6 @@ import {
 import { useCopilotOrchestrator } from '../hooks/useCopilotOrchestrator';
 import { CopilotOrb } from './components/CopilotOrb';
 import { CopilotPromptBox } from './components/CopilotPromptBox';
-import { AgentReasoningView } from './components/AgentReasoningView';
 import { AiConfigModal } from './components/AiConfigModal';
 
 export function CopilotApp() {
@@ -41,8 +40,6 @@ export function CopilotApp() {
     setActiveNav,
     messages,
     isProcessing,
-    expandedThoughtId,
-    setExpandedThoughtId,
     showShell,
     showOrb,
     showHeading,
@@ -259,17 +256,7 @@ export function CopilotApp() {
                       </div>
 
                       <div className="flex-1 space-y-3">
-                        {msg.agentSteps && msg.agentSteps.length > 0 && (
-                          <AgentReasoningView
-                            steps={msg.agentSteps}
-                            isExpanded={expandedThoughtId === msg.id}
-                            onToggle={() =>
-                              setExpandedThoughtId(expandedThoughtId === msg.id ? null : msg.id)
-                            }
-                            isProcessing={isProcessing}
-                          />
-                        )}
-
+                        {/* Agent reasoning hidden so only the clean answer appears */}
                         {msg.content && (
                           <div className="rounded-3xl border border-slate-200/80 bg-white p-5 text-sm text-slate-800 shadow-xs leading-relaxed space-y-2.5">
                             <div className="whitespace-pre-line">{msg.content}</div>
