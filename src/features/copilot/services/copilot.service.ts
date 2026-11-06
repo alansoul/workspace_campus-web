@@ -15,11 +15,22 @@ export const copilotService = {
           localStorage.getItem('auth_token'))) ||
       '';
 
-    const baseUrl =
-      (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_URL) ||
+    // Fallback directly to the live Render backend
+    let rawBase =
+      (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_URL?.trim()) ||
       'https://workspace-campus-api.onrender.com';
 
-    const res = await fetch(`${baseUrl}/api/copilot/chat`, {
+    // Remove trailing slash if present
+    rawBase = rawBase.replace(/\/+$/, '');
+
+    // Prevent duplicate /api/api if NEXT_PUBLIC_API_URL already contains /api
+    if (rawBase.endsWith('/api')) {
+      rawBase = rawBase.slice(0, -4);
+    }
+
+    const endpoint = `${rawBase}/api/copilot/chat`;
+
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
