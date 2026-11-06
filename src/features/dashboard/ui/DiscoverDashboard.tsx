@@ -82,13 +82,13 @@ function DashboardContent() {
       desc: 'Peer-to-peer student gigs with milestone escrow',
     },
     {
-      id: 'ai',
+      id: 'copilot',
       name: 'Northstar Copilot',
       category: 'AI Assistant',
-      href: '/chat?ai=true',
+      href: '/copilot',
       icon: Sparkles,
       color: 'bg-linear-to-tr from-purple-600 to-indigo-600 text-white',
-      desc: 'Gemini-powered campus research assistant',
+      desc: 'Campus AI Mind & multi-agent orchestrator',
     },
     {
       id: 'admin',
@@ -260,7 +260,7 @@ function DashboardContent() {
                 </div>
                 <div className="flex items-center justify-between pt-4 border-t border-[#F1F3F4]">
                   <Link
-                    href="/chat?ai=true"
+                    href="/copilot"
                     className="text-xs font-semibold text-[#0B57D0] hover:underline"
                   >
                     Get started
