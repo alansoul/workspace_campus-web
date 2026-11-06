@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { CopilotMessage, ExampleStarter } from '../types/ai.types';
+import { CopilotMessage, ExampleStarter } from '../types/copilot.types';
 import {
   GraduationCap,
   Calendar,

@@ -1,4 +1,4 @@
-import { CopilotApp } from '@/features/ai/ui/CopilotApp';
+import { CopilotApp } from '@/features/copilot/ui/CopilotApp';
 
 export const metadata = {
   title: 'Northstar Copilot | AI Mind Orchestrator',

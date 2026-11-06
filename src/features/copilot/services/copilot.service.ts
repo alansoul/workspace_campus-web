@@ -1,17 +1,25 @@
-import { CopilotMessage } from '../types/ai.types';
+import { CopilotMessage } from '../types/copilot.types';
 
-export const aiService = {
+declare const process: {
+  env: {
+    NEXT_PUBLIC_API_URL?: string;
+    [key: string]: string | undefined;
+  };
+};
+
+export const copilotService = {
   /**
-   * Dispatches the query to campus-api (/api/ai/chat)
+   * Dispatches the query to campus-api (/api/copilot/chat)
    */
   async queryOrchestrator(
     message: string,
     options?: { citations?: boolean; model?: string }
   ): Promise<Partial<CopilotMessage>> {
     const baseUrl =
-      process.env.NEXT_PUBLIC_API_URL || 'https://workspace-campus-api.onrender.com';
+      (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_URL) ||
+      'https://workspace-campus-api.onrender.com';
 
-    const res = await fetch(`${baseUrl}/api/ai/chat`, {
+    const res = await fetch(`${baseUrl}/api/copilot/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

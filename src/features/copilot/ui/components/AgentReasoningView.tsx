@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Sparkles, ChevronRight, CheckCircle2 } from 'lucide-react';
-import { AgentStep } from '../../types/ai.types';
+import { AgentStep } from '../../types/copilot.types';
 
 interface AgentReasoningViewProps {
   steps: AgentStep[];
