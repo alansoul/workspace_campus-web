@@ -1,20 +1,13 @@
 import { CopilotMessage } from '../types/copilot.types';
 
-declare const process: {
-  env: {
-    NEXT_PUBLIC_API_URL?: string;
-    [key: string]: string | undefined;
-  };
-};
-
 export const copilotService = {
-  /**
-   * Dispatches the query to campus-api (/api/copilot/chat)
-   */
   async queryOrchestrator(
     message: string,
     options?: { citations?: boolean; model?: string }
-  ): Promise<Partial<CopilotMessage>> {
+  ): Promise<Partial<CopilotMessage> & { quotaExceeded?: boolean; quotaRemaining?: number }> {
+    const provider = (typeof window !== 'undefined' && localStorage.getItem('northstar_ai_provider')) || 'system';
+    const userApiKey = (typeof window !== 'undefined' && localStorage.getItem('northstar_ai_key')) || '';
+
     const baseUrl =
       (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_URL) ||
       'https://workspace-campus-api.onrender.com';
@@ -25,7 +18,14 @@ export const copilotService = {
         'Content-Type': 'application/json',
       },
       credentials: 'include',
-      body: JSON.stringify({ message, options }),
+      body: JSON.stringify({
+        message,
+        options: {
+          ...options,
+          provider,
+          userApiKey: userApiKey || undefined,
+        },
+      }),
     });
 
     if (!res.ok) {

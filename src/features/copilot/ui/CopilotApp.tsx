@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   Sparkles,
@@ -23,8 +23,12 @@ import { useCopilotOrchestrator } from '../hooks/useCopilotOrchestrator';
 import { CopilotOrb } from './components/CopilotOrb';
 import { CopilotPromptBox } from './components/CopilotPromptBox';
 import { AgentReasoningView } from './components/AgentReasoningView';
+import { AiConfigModal } from './components/AiConfigModal';
 
 export function CopilotApp() {
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [quotaWarning] = useState(false);
+
   const {
     greeting,
     inputPrompt,
@@ -117,9 +121,13 @@ export function CopilotApp() {
           <button title="Help" className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition">
             <HelpCircle className="w-4 h-4" />
           </button>
-          <button title="Settings" className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition">
-            <Settings className="w-4 h-4" />
-          </button>
+          <button
+  onClick={() => setIsConfigModalOpen(true)}
+  title="AI Settings & API Keys"
+  className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+>
+  <Settings className="w-4 h-4" />
+</button>
           <div className="w-9 h-9 rounded-full bg-linear-to-tr from-purple-500 to-indigo-600 text-white flex items-center justify-center text-xs font-bold ring-2 ring-purple-100 shadow-xs cursor-pointer">
             R
           </div>
@@ -135,7 +143,10 @@ export function CopilotApp() {
           }`}
         >
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:border-slate-300 transition">
+            <button
+  onClick={() => setIsConfigModalOpen(true)}
+  className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:border-purple-300 transition cursor-pointer"
+>
               <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse" />
               <span>{selectedModel}</span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
@@ -332,6 +343,13 @@ export function CopilotApp() {
           </footer>
         )}
       </div>
+      
+    {/* Model & API Key Config Modal */}
+      <AiConfigModal
+        isOpen={isConfigModalOpen}
+        onClose={() => setIsConfigModalOpen(false)}
+        quotaWarning={quotaWarning}
+      />
     </div>
   );
 }
