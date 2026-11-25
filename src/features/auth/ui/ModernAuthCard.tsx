@@ -19,6 +19,7 @@ import { axiosInstance } from '@/lib/api';
 import { ForgotPasswordForm } from './ForgotPasswordForm';
 import { GoogleOAuthButton } from './GoogleOAuthButton';
 import { AuthBackground } from './AuthBackground';
+import { TurnstileWidget } from './TurnstileWidget';
 
 interface ModernAuthCardProps {
   initialMode?: 'signin' | 'signup';
@@ -54,6 +55,9 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
   const [otp, setOtp] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
+  const [showResendChallenge, setShowResendChallenge] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -133,14 +137,19 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
         if (mode === 'signup' && !name.trim()) {
           throw new Error('Please enter your full name.');
         }
+        if (!turnstileToken) {
+          throw new Error('Please complete the human verification check.');
+        }
 
         await axiosInstance.post('/auth/otp/request', {
           email: normalizedEmail,
           purpose: mode === 'signup' ? 'REGISTER' : 'LOGIN',
+          turnstileToken,
         });
 
         setStep('verify-otp');
         setOtp('');
+        setShowResendChallenge(false);
         setMessage(`Verification code sent to ${normalizedEmail}.`);
       } else {
         // Password sign-in
@@ -182,6 +191,10 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
       }
     } finally {
       setIsLoading(false);
+      if (authMethod === 'otp') {
+        setTurnstileResetKey((k) => k + 1);
+        setTurnstileToken('');
+      }
     }
   };
 
@@ -282,41 +295,43 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
     }
   };
 
-  // 4. Trigger Forgot Password OTP
-  const handleForgotPasswordTrigger = async () => {
+  // 4. Open Forgot Password OTP flow (Turnstile + OTP request handled inside ForgotPasswordForm)
+  const handleForgotPasswordTrigger = () => {
     resetMessages();
     if (isInvalidDomain || !normalizedEmail) {
       setError('Please enter your registered email address first.');
       return;
     }
-    setIsLoading(true);
-    try {
-      await axiosInstance.post('/auth/otp/request', {
-        email: normalizedEmail,
-        purpose: 'RESET_PASSWORD',
-      });
-      setStep('forgot-password');
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to send reset code.');
-    } finally {
-      setIsLoading(false);
-    }
+    setStep('forgot-password');
   };
 
   const handleResendOtp = async () => {
     resetMessages();
-    setIsLoading(true);
+    if (!showResendChallenge) {
+      setTurnstileToken('');
+      setShowResendChallenge(true);
+      return;
+    }
+    if (!turnstileToken) {
+      setError('Please complete the human verification check first.');
+      return;
+    }
 
+    setIsLoading(true);
     try {
       await axiosInstance.post('/auth/otp/request', {
         email: normalizedEmail,
         purpose: mode === 'signup' ? 'REGISTER' : 'LOGIN',
+        turnstileToken,
       });
+      setShowResendChallenge(false);
       setMessage(`A new verification code was sent to ${normalizedEmail}.`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to resend verification code.');
     } finally {
       setIsLoading(false);
+      setTurnstileResetKey((k) => k + 1);
+      setTurnstileToken('');
     }
   };
 
@@ -533,9 +548,22 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                   </div>
                 )}
 
+                {authMethod === 'otp' && (
+                  <TurnstileWidget
+                    action={mode === 'signup' ? 'signup' : 'otp_login'}
+                    resetKey={turnstileResetKey}
+                    onTokenChange={setTurnstileToken}
+                  />
+                )}
+
                 <button
                   type="submit"
-                  disabled={isLoading || isResolving || isInvalidDomain}
+                  disabled={
+                    isLoading ||
+                    isResolving ||
+                    isInvalidDomain ||
+                    (authMethod === 'otp' && !turnstileToken)
+                  }
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-blue-700 to-blue-600 py-3 text-[13px] font-semibold text-white shadow-md shadow-blue-600/15 transition-colors duration-200 hover:from-blue-800 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isLoading ? (
@@ -588,11 +616,20 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                   <button
                     type="button"
                     onClick={handleResendOtp}
-                    className="text-[#1A73E8] hover:underline font-semibold cursor-pointer"
+                    disabled={isLoading || (showResendChallenge && !turnstileToken)}
+                    className="text-[#1A73E8] hover:underline font-semibold cursor-pointer disabled:opacity-50"
                   >
-                    Resend Code
+                    {showResendChallenge ? 'Send New Code' : 'Resend Code'}
                   </button>
                 </div>
+
+                {showResendChallenge && (
+                  <TurnstileWidget
+                    action={mode === 'signup' ? 'signup' : 'otp_login'}
+                    resetKey={turnstileResetKey}
+                    onTokenChange={setTurnstileToken}
+                  />
+                )}
 
                 <button
                   type="submit"
@@ -731,6 +768,8 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                       setMode('signup');
                       setAuthMethod('otp');
                       setStep('input');
+                      setTurnstileToken('');
+                      setTurnstileResetKey((k) => k + 1);
                       resetMessages();
                     }}
                     className="font-semibold text-[#1A73E8] hover:underline cursor-pointer"
@@ -747,6 +786,8 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
                       setMode('signin');
                       setAuthMethod('password');
                       setStep('input');
+                      setTurnstileToken('');
+                      setTurnstileResetKey((k) => k + 1);
                       resetMessages();
                     }}
                     className="font-semibold text-[#1A73E8] hover:underline cursor-pointer"
