@@ -1,0 +1,31 @@
+sequenceDiagram
+  autonumber
+  actor A as User A (Web / Flutter)
+  actor B as User B (Web / Flutter)
+  participant Socket as ChatGateway (Socket.IO)
+  participant HTTP as ChatController & ChatService
+  participant DB as Neon Postgres (chat)
+  participant LK as LiveKit SFU
+
+  A->>Socket: Connect with JWT handshake
+  Socket->>Socket: Join user & channel rooms + sync presence
+  Socket-->>B: Broadcast presence:sync (online status)
+
+  A->>HTTP: POST /api/chat/upload (optional attachment <= 100MB)
+  HTTP-->>A: File metadata & URL
+
+  A->>Socket: Emit sendMessage (channelId, content, fileUrl)
+  Socket->>DB: Persist ChatMessage
+  Socket-->>A: Deliver message event
+  Socket-->>B: Deliver message event
+
+  Note over A,LK: Audio / Video Call Signaling
+  A->>HTTP: GET /api/chat/livekit/token?room=...
+  HTTP->>LK: Mint signed LiveKit participant token
+  HTTP-->>A: Return LiveKit JWT + room URL
+  A->>Socket: Emit call:offer / signal to Channel
+  Socket-->>B: IncomingCallModal / notification
+  B->>HTTP: GET /api/chat/livekit/token?room=...
+  HTTP-->>B: Return LiveKit JWT
+  A->>LK: Join WebRTC media room
+  B->>LK: Join WebRTC media room

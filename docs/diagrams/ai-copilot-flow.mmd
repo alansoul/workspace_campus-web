@@ -1,0 +1,42 @@
+flowchart TD
+  User(["Student / User"])
+  WebUI["campus-web<br/>CopilotApp + useCopilotOrchestrator<br/>or CampusAiDrawer"]
+  MobileUI["campus_mobile<br/>AI Copilot Sheet / Planned Feature"]
+  Endpoint["POST /api/copilot/chat<br/>(or /api/ai/chat)"]
+  Guard["JwtAuthGuard"]
+  Quota{"Using System Key?"}
+  QuotaCheck{"Daily Quota under 20?"}
+  QuotaErr["Return quotaExceeded response<br/>Prompt BYOK or Local AI"]
+  Triage["Triage Router<br/>classifyDomain(prompt)"]
+  Academics["Fetch AttendanceRecord,<br/>Timetable & User Context"]
+  General["Load User & University Context"]
+  Scrub["PII Redaction & Prompt Synthesis"]
+  Router{"Provider Selection"}
+  SystemLLM["System Cascade<br/>(Gemini / Groq / OpenAI)"]
+  BYOK["User BYOK Key<br/>(Gemini / Groq / OpenAI / HF)"]
+  Reply["CopilotResponseDto<br/>content, agentSteps, citations, suggestedFollowUps"]
+
+  User --> WebUI
+  User --> MobileUI
+  WebUI --> Endpoint
+  MobileUI --> Endpoint
+  Endpoint --> Guard
+  Guard --> Quota
+
+  Quota -- "Yes (system)" --> QuotaCheck
+  Quota -- "No (BYOK)" --> Triage
+  QuotaCheck -- "No" --> QuotaErr
+  QuotaCheck -- "Yes" --> Triage
+
+  Triage -- "ACADEMICS" --> Academics
+  Triage -- "GENERAL / OTHER" --> General
+  Academics --> Scrub
+  General --> Scrub
+  Scrub --> Router
+
+  Router -- "system" --> SystemLLM
+  Router -- "userApiKey" --> BYOK
+  SystemLLM --> Reply
+  BYOK --> Reply
+  Reply --> WebUI
+  Reply --> MobileUI
