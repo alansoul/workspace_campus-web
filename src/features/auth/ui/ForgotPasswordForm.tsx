@@ -4,6 +4,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { axiosInstance } from '@/lib/api';
+import { TurnstileWidget } from './TurnstileWidget';
 
 interface ForgotPasswordFormProps {
   email: string;
@@ -23,10 +24,38 @@ export function ForgotPasswordForm({
   refreshSession,
 }: ForgotPasswordFormProps) {
   const router = useRouter();
+  const [codeSent, setCodeSent] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleRequestResetOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    onError('');
+    if (!turnstileToken) {
+      onError('Please complete the human verification check.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await axiosInstance.post('/auth/otp/request', {
+        email: email.toLowerCase().trim(),
+        purpose: 'RESET_PASSWORD',
+        turnstileToken,
+      });
+      setCodeSent(true);
+    } catch (err: unknown) {
+      onError(err instanceof Error ? err.message : 'Failed to send reset code.');
+    } finally {
+      setIsLoading(false);
+      setTurnstileResetKey((k) => k + 1);
+      setTurnstileToken('');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +88,39 @@ export function ForgotPasswordForm({
       setIsLoading(false);
     }
   };
+
+  if (!codeSent) {
+    return (
+      <form onSubmit={handleRequestResetOtp} className="space-y-4">
+        <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 text-xs text-slate-700">
+          Confirm the security check below to send a 6-digit password reset code to{' '}
+          <span className="font-semibold text-slate-900">{email}</span>.
+        </div>
+
+        <TurnstileWidget
+          action="forgot_password"
+          resetKey={turnstileResetKey}
+          onTokenChange={setTurnstileToken}
+        />
+
+        <button
+          type="submit"
+          disabled={isLoading || !turnstileToken}
+          className="w-full py-3 rounded-full bg-[#0B57D0] hover:bg-[#0842A0] text-white font-medium text-sm transition shadow-xs cursor-pointer disabled:opacity-50"
+        >
+          {isLoading ? 'Sending Reset Code...' : 'Send Reset Code'}
+        </button>
+
+        <button
+          type="button"
+          onClick={onCancel}
+          className="w-full py-1 text-xs text-slate-500 hover:text-slate-800 transition cursor-pointer text-center"
+        >
+          Back to Sign In
+        </button>
+      </form>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -127,13 +189,25 @@ export function ForgotPasswordForm({
         {isLoading ? 'Resetting...' : 'Reset Password & Sign In'}
       </button>
 
-      <button
-        type="button"
-        onClick={onCancel}
-        className="w-full py-1 text-xs text-slate-500 hover:text-slate-800 transition cursor-pointer text-center"
-      >
-        Back to Sign In
-      </button>
+      <div className="flex items-center justify-between pt-1">
+        <button
+          type="button"
+          onClick={() => {
+            onError('');
+            setCodeSent(false);
+          }}
+          className="text-xs text-[#1A73E8] hover:underline cursor-pointer"
+        >
+          Resend reset code
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-xs text-slate-500 hover:text-slate-800 transition cursor-pointer"
+        >
+          Back to Sign In
+        </button>
+      </div>
     </form>
   );
 }
