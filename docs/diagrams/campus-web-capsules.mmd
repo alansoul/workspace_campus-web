@@ -1,0 +1,38 @@
+flowchart TD
+  Proxy["src/proxy.ts<br/>Edge Cookie & Role Gate"]
+
+  subgraph PublicRoutes["Public & Auth Routes"]
+    Marketing["(marketing)/page.tsx<br/>ProductLandingPage"]
+    AuthPages["(auth)/login & register<br/>ModernAuthCard + GoogleOAuthButton"]
+    Setup["(onboarding)/setup<br/>SetupWizard (5-step institutional onboarding)"]
+    Callback["api/auth/callback/route.ts"]
+  end
+
+  subgraph WorkspaceRoutes["(workspace) Protected Routes"]
+    Dash["/dashboard<br/>DiscoverDashboard + LinkCampusModal"]
+    Acad["/academics<br/>AcademicsApp (15 Views + CampusAiDrawer)"]
+    Chat["/chat<br/>ChatApp + ChatFeed + LiveKitVideoCall"]
+    Copilot["/copilot<br/>CopilotApp + AgentReasoningView + AiConfigModal"]
+    Freelance["/freelance<br/>FreelanceApp + Create/Detail Modals"]
+    Admin["/admin<br/>AdminConsoleView + TelemetryGrid"]
+    Settings["/settings<br/>Account & Campus Linking"]
+  end
+
+  subgraph SharedLib["Shared Client Infrastructure"]
+    ApiTs["src/lib/api.ts<br/>Authenticated Axios Instance"]
+    SocketTs["src/lib/socket.ts<br/>Socket.IO Client"]
+    PermsTs["src/lib/permissions.ts<br/>RBAC Helpers"]
+  end
+
+  Proxy --> PublicRoutes
+  Proxy --> WorkspaceRoutes
+  AuthPages --> ApiTs
+  Setup --> ApiTs
+  Dash --> ApiTs
+  Acad --> ApiTs
+  Chat --> ApiTs
+  Chat --> SocketTs
+  Copilot --> ApiTs
+  Freelance --> ApiTs
+  Admin --> ApiTs
+  WorkspaceRoutes --> PermsTs
