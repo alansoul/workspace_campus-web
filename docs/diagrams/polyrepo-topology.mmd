@@ -1,0 +1,21 @@
+flowchart LR
+  subgraph Polyrepo["GitHub Polyrepo Architecture (alansoul/*)"]
+    RepoAPI["workspace_campus-api<br/>(NestJS + Prisma + Socket.IO)<br/>CI: Vitest + Oxlint + Nest Build"]
+    RepoWeb["workspace_campus-web<br/>(Next.js 16 + React 19 + Tailwind 4)<br/>CI: ESLint + tsc + Next Build"]
+    RepoMob["workspace_campus-mobile<br/>(Flutter + Riverpod + Dio)<br/>Targets: Android .apk + Windows .exe"]
+  end
+
+  subgraph Hosting["Runtime & Distribution"]
+    Render["Render Cloud<br/>workspace-campus-api.onrender.com"]
+    Vercel["Vercel Edge & Node<br/>workspace-campus-web.vercel.app"]
+    Binaries["Release Artifacts<br/>app-release.apk & campus_mobile.exe"]
+  end
+
+  RepoAPI -->|"Deploy"| Render
+  RepoWeb -->|"Deploy"| Vercel
+  RepoMob -->|"Build"| Binaries
+
+  Vercel -->|"REST + Proxy (/api/*)"| Render
+  Vercel -->|"Socket.IO + LiveKit"| Render
+  Binaries -->|"REST + Dio AuthInterceptor"| Render
+  Binaries -->|"Socket.IO + LiveKit"| Render
