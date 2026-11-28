@@ -151,7 +151,7 @@ export function MegaFooter() {
               href="/"
               className="inline-flex w-fit items-center gap-2.5 text-[14px] font-semibold tracking-[-0.2px] text-[#202124] transition-colors hover:text-[#0B57D0]"
             >
-              <NorthstarLogo size={26} interactive3d />
+              <NorthstarLogo size={28} mode="idle" interactive3d />
               <span>Northstar Workspace</span>
             </Link>
 

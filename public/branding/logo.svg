@@ -1,77 +1,86 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Northstar Workspace Logo">
   <defs>
-    <radialGradient id="ns-bg" cx="50%" cy="22%" r="78%" fx="50%" fy="14%">
-      <stop offset="0%" stop-color="#1C2233"/>
-      <stop offset="48%" stop-color="#0B0E17"/>
-      <stop offset="100%" stop-color="#040509"/>
+    <radialGradient id="nsSquircleBg" cx="50%" cy="18%" r="86%" fx="50%" fy="15%">
+      <stop offset="0%" stop-color="#1B2438"/>
+      <stop offset="32%" stop-color="#101625"/>
+      <stop offset="70%" stop-color="#060912"/>
+      <stop offset="100%" stop-color="#030408"/>
     </radialGradient>
-    <linearGradient id="ns-rim-top" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0"/>
-      <stop offset="30%" stop-color="#CBD5E1" stop-opacity="0.35"/>
-      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.95"/>
-      <stop offset="70%" stop-color="#CBD5E1" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    <linearGradient id="nsSquircleRim" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#B9CBE8" stop-opacity="0.62"/>
+      <stop offset="18%" stop-color="#607394" stop-opacity="0.24"/>
+      <stop offset="52%" stop-color="#273247" stop-opacity="0.14"/>
+      <stop offset="86%" stop-color="#536585" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#9EB2D4" stop-opacity="0.46"/>
     </linearGradient>
-    <linearGradient id="ns-rim-bottom" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0"/>
-      <stop offset="35%" stop-color="#94A3B8" stop-opacity="0.25"/>
-      <stop offset="50%" stop-color="#E2E8F0" stop-opacity="0.8"/>
-      <stop offset="65%" stop-color="#94A3B8" stop-opacity="0.25"/>
-      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    <linearGradient id="nsLeftStemGrad" x1="187" y1="168" x2="187" y2="356" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="28%" stop-color="#F1F5FB"/>
+      <stop offset="56%" stop-color="#C9D4E4"/>
+      <stop offset="80%" stop-color="#68768D"/>
+      <stop offset="100%" stop-color="#293242"/>
     </linearGradient>
-    <linearGradient id="ns-left-pillar" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#FFFDF9"/>
-      <stop offset="45%" stop-color="#E5E9F2"/>
-      <stop offset="82%" stop-color="#647084"/>
-      <stop offset="100%" stop-color="#272E3D"/>
-    </linearGradient>
-    <linearGradient id="ns-right-pillar" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#2B3242"/>
-      <stop offset="32%" stop-color="#707C91"/>
-      <stop offset="75%" stop-color="#E6EBF3"/>
+    <linearGradient id="nsRightStemGrad" x1="321" y1="168" x2="321" y2="356" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2A3446"/>
+      <stop offset="22%" stop-color="#536178"/>
+      <stop offset="52%" stop-color="#B7C4D8"/>
+      <stop offset="78%" stop-color="#EDF2FA"/>
       <stop offset="100%" stop-color="#FFFFFF"/>
     </linearGradient>
-    <linearGradient id="ns-diagonal" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="nsDiagGrad" x1="175" y1="180" x2="334" y2="344" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="55%" stop-color="#EEF2F7"/>
+      <stop offset="35%" stop-color="#F6F8FC"/>
+      <stop offset="68%" stop-color="#E7EEF8"/>
       <stop offset="100%" stop-color="#FFFFFF"/>
     </linearGradient>
-    <linearGradient id="ns-orbit" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="50%" stop-color="#F8FAFC"/>
-      <stop offset="100%" stop-color="#E2E8F0"/>
+    <linearGradient id="nsFoldShadowLeft" x1="196" y1="224" x2="174" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0A101D" stop-opacity="0.34"/>
+      <stop offset="55%" stop-color="#0A101D" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#0A101D" stop-opacity="0"/>
     </linearGradient>
-    <radialGradient id="ns-star-glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#FFF8EB" stop-opacity="0.65"/>
-      <stop offset="45%" stop-color="#FDE68A" stop-opacity="0.16"/>
-      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    <linearGradient id="nsFoldShadowRight" x1="312" y1="296" x2="336" y2="262" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0A101D" stop-opacity="0.32"/>
+      <stop offset="55%" stop-color="#0A101D" stop-opacity="0.09"/>
+      <stop offset="100%" stop-color="#0A101D" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="nsRingGrad" x1="115" y1="342" x2="352" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="54%" stop-color="#FFFFFF"/>
+      <stop offset="82%" stop-color="#E5ECF6"/>
+      <stop offset="100%" stop-color="#CFD9E8"/>
+    </linearGradient>
+    <radialGradient id="nsStarHaloGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFDF5" stop-opacity="0.68"/>
+      <stop offset="28%" stop-color="#FFF4D4" stop-opacity="0.32"/>
+      <stop offset="62%" stop-color="#E6DFC8" stop-opacity="0.09"/>
+      <stop offset="100%" stop-color="#FFF8E0" stop-opacity="0"/>
     </radialGradient>
-    <filter id="ns-soft-shadow" x="-15%" y="-15%" width="130%" height="130%">
-      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.55"/>
-    </filter>
+    <clipPath id="nsSquircleClip">
+      <path d="M 150 38 L 362 38 C 428 38, 474 84, 474 150 L 474 362 C 474 428, 428 474, 362 474 L 150 474 C 84 474, 38 428, 38 362 L 38 150 C 38 84, 84 38, 150 38 Z"/>
+    </clipPath>
+    <clipPath id="nsLeftStemClip">
+      <rect x="164" y="168" width="46" height="188" rx="23" ry="23"/>
+    </clipPath>
+    <clipPath id="nsRightStemClip">
+      <rect x="298" y="168" width="46" height="188" rx="23" ry="23"/>
+    </clipPath>
   </defs>
 
-  <!-- Obsidian Glass Squircle -->
-  <rect x="24" y="24" width="464" height="464" rx="118" fill="url(#ns-bg)" stroke="#2A3244" stroke-opacity="0.55" stroke-width="1.5"/>
-
-  <!-- Subtle Inner Bevel Highlights -->
-  <path d="M 132 25.5 C 210 23.5, 302 23.5, 380 25.5" stroke="url(#ns-rim-top)" stroke-width="2.2" stroke-linecap="round"/>
-  <path d="M 148 486.5 C 220 488.5, 292 488.5, 364 486.5" stroke="url(#ns-rim-bottom)" stroke-width="1.8" stroke-linecap="round"/>
-
-  <!-- 3D Sculpted "N" Lettermark -->
-  <g filter="url(#ns-soft-shadow)">
-    <!-- Right Pillar -->
-    <path d="M 298 192 C 298 179, 308 170, 321 170 C 334 170, 344 179, 344 192 L 344 334 C 344 346, 334 356, 321 356 C 308 356, 298 346, 298 334 Z" fill="url(#ns-right-pillar)"/>
-    <!-- Left Pillar -->
-    <path d="M 164 192 C 164 179, 174 170, 187 170 C 200 170, 210 179, 210 192 L 210 334 C 210 346, 200 356, 187 356 C 174 356, 164 346, 164 334 Z" fill="url(#ns-left-pillar)"/>
-    <!-- Sculpted Diagonal -->
-    <path d="M 171 178 C 180 167, 198 168, 208 180 L 339 327 C 349 339, 341 356, 324 356 C 313 356, 304 351, 297 343 L 169 199 C 162 191, 164 184, 171 178 Z" fill="url(#ns-diagonal)"/>
+  <path d="M 150 38 L 362 38 C 428 38, 474 84, 474 150 L 474 362 C 474 428, 428 474, 362 474 L 150 474 C 84 474, 38 428, 38 362 L 38 150 C 38 84, 84 38, 150 38 Z" fill="url(#nsSquircleBg)"/>
+  <g clip-path="url(#nsSquircleClip)">
+    <ellipse cx="256" cy="48" rx="185" ry="62" fill="#3B5382" opacity="0.11"/>
   </g>
+  <path d="M 150 38 L 362 38 C 428 38, 474 84, 474 150 L 474 362 C 474 428, 428 474, 362 474 L 150 474 C 84 474, 38 428, 38 362 L 38 150 C 38 84, 84 38, 150 38 Z" fill="none" stroke="url(#nsSquircleRim)" stroke-width="1.6"/>
 
-  <!-- Orbital Crescent Ring -->
-  <path d="M 116 334 C 134 366, 232 324, 324 232 C 354 202, 356 177, 320 183 C 295 187, 267 200, 244 216 C 271 198, 307 187, 325 194 C 335 198, 332 214, 314 233 C 242 308, 154 346, 128 327 C 122 322, 122 313, 132 301 C 116 317, 111 326, 116 334 Z" fill="url(#ns-orbit)" filter="url(#ns-soft-shadow)"/>
+  <rect x="164" y="168" width="46" height="188" rx="23" ry="23" fill="url(#nsLeftStemGrad)"/>
+  <g clip-path="url(#nsLeftStemClip)"><polygon points="164,200 214,253 214,284 164,234" fill="url(#nsFoldShadowLeft)"/></g>
+  <rect x="298" y="168" width="46" height="188" rx="23" ry="23" fill="url(#nsRightStemGrad)"/>
+  <g clip-path="url(#nsRightStemClip)"><polygon points="294,270 346,325 346,292 294,238" fill="url(#nsFoldShadowRight)"/></g>
+  <path d="M 203.73 175.22 L 337.73 317.22 A 23 23 0 0 1 304.27 348.79 L 170.27 206.79 A 23 23 0 0 1 203.73 175.22 Z" fill="url(#nsDiagGrad)"/>
 
-  <!-- 4-Point North Star & Halo -->
-  <circle cx="356" cy="148" r="52" fill="url(#ns-star-glow)"/>
-  <path d="M 356 106 Q 358 143 398 148 Q 358 153 356 190 Q 354 153 314 148 Q 354 143 356 106 Z" fill="#FFFDF8"/>
+  <path d="M 131 302 C 106 328, 110 351, 146 349 C 192 346, 250 311, 301 264 C 341 227, 360 197, 349 182 C 337 167, 294 182, 244 216 C 291 190, 327 181, 335 190 C 341 198, 326 225, 295 258 C 245 303, 187 332, 144 335 C 122 336, 117 324, 131 302 Z" fill="#040812" opacity="0.34" transform="translate(0, 3)"/>
+  <path d="M 131 302 C 106 328, 110 351, 146 349 C 192 346, 250 311, 301 264 C 341 227, 360 197, 349 182 C 337 167, 294 182, 244 216 C 291 190, 327 181, 335 190 C 341 198, 326 225, 295 258 C 245 303, 187 332, 144 335 C 122 336, 117 324, 131 302 Z" fill="url(#nsRingGrad)"/>
+
+  <circle cx="355" cy="148" r="64" fill="url(#nsStarHaloGrad)"/>
+  <path d="M 355 106 C 357 134, 369 146, 397 148 C 369 150, 357 162, 355 190 C 353 162, 341 150, 313 148 C 341 146, 353 134, 355 106 Z" fill="#FFFDF8"/>
 </svg>

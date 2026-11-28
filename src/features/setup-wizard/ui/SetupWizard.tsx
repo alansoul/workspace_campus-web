@@ -93,7 +93,7 @@ export function SetupWizard() {
       {/* Top Header */}
       <header className="border-b border-slate-200/80 px-6 sm:px-10 py-3.5 flex items-center justify-between">
         <Link href="/" className="inline-flex items-center gap-2.5 text-xl tracking-tight text-slate-800">
-          <NorthstarLogo size={34} interactive3d />
+          <NorthstarLogo size={36} mode="idle" interactive3d />
           <span>
             <span className="font-semibold text-slate-900">Northstar</span>{' '}
             <span className="font-normal text-slate-600">Workspace</span>

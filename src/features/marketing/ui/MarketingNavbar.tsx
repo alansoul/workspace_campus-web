@@ -214,7 +214,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             aria-label="Northstar Workspace home"
             className="flex min-w-0 shrink items-center gap-1.5 sm:gap-2.5"
           >
-            <NorthstarLogo size={38} interactive3d />
+            <NorthstarLogo size={40} mode="idle" interactive3d />
 
 
 
