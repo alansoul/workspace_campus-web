@@ -30,7 +30,7 @@ export function AiConfigModal({ isOpen, onClose, quotaWarning }: AiConfigModalPr
 
   const [apiKey, setApiKey] = useState<string>(() => {
     if (typeof window === 'undefined') return '';
-    return localStorage.getItem('northstar_ai_key') || '';
+    return sessionStorage.getItem('northstar_ai_key') || '';
   });
 
   const [saved, setSaved] = useState(false);
@@ -39,7 +39,13 @@ export function AiConfigModal({ isOpen, onClose, quotaWarning }: AiConfigModalPr
 
   const handleSave = () => {
     localStorage.setItem('northstar_ai_provider', provider);
-    localStorage.setItem('northstar_ai_key', apiKey.trim());
+    localStorage.removeItem('northstar_ai_key');
+    const trimmedKey = apiKey.trim();
+    if (trimmedKey) {
+      sessionStorage.setItem('northstar_ai_key', trimmedKey);
+    } else {
+      sessionStorage.removeItem('northstar_ai_key');
+    }
     setSaved(true);
     setTimeout(() => {
       setSaved(false);

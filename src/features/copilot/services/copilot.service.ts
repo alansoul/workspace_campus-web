@@ -16,7 +16,7 @@ export const copilotService = {
       localStorage.getItem('northstar_ai_provider') || 'system';
 
     const userApiKey =
-      localStorage.getItem('northstar_ai_key') || '';
+      sessionStorage.getItem('northstar_ai_key') || '';
 
     const response = await axiosInstance.post(
       '/copilot/chat',
