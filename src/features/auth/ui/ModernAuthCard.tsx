@@ -13,9 +13,9 @@ import {
   ShieldCheck,
   AlertTriangle,
   Lock,
-  Sparkles,
 } from 'lucide-react';
 import { axiosInstance } from '@/lib/api';
+import { NorthstarLogo } from '@/components/ui/NorthstarLogo';
 import { ForgotPasswordForm } from './ForgotPasswordForm';
 import { GoogleOAuthButton } from './GoogleOAuthButton';
 import { AuthBackground } from './AuthBackground';
@@ -365,8 +365,8 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
         <div className="flex flex-col gap-4 bg-white/35 p-5 sm:gap-5 sm:p-7">
           <div className="space-y-4">
             <div className="space-y-2 text-center">
-              <div className="mx-auto grid h-11 w-11 place-items-center rounded-[14px] bg-linear-to-br from-sky-400 to-indigo-600 text-white shadow-md shadow-blue-500/20">
-                <Sparkles className="h-5 w-5" />
+              <div className="mx-auto flex justify-center">
+                <NorthstarLogo size={52} interactive3d />
               </div>
               <h3 className="text-[23px] font-bold tracking-tight text-slate-900 sm:text-2xl">
                 {step === 'input' && mode === 'signin' ? 'Welcome back' : title}

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="nsm-left" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B"/>
+      <stop offset="100%" stop-color="#475569"/>
+    </linearGradient>
+    <linearGradient id="nsm-diag" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="55%" stop-color="#1E3A8A"/>
+      <stop offset="100%" stop-color="#0B57D0"/>
+    </linearGradient>
+    <linearGradient id="nsm-orbit" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M 298 192 C 298 179, 308 170, 321 170 C 334 170, 344 179, 344 192 L 344 334 C 344 346, 334 356, 321 356 C 308 356, 298 346, 298 334 Z" fill="url(#nsm-left)"/>
+  <path d="M 164 192 C 164 179, 174 170, 187 170 C 200 170, 210 179, 210 192 L 210 334 C 210 346, 200 356, 187 356 C 174 356, 164 346, 164 334 Z" fill="url(#nsm-left)"/>
+  <path d="M 171 178 C 180 167, 198 168, 208 180 L 339 327 C 349 339, 341 356, 324 356 C 313 356, 304 351, 297 343 L 169 199 C 162 191, 164 184, 171 178 Z" fill="url(#nsm-diag)"/>
+  <path d="M 116 334 C 134 366, 232 324, 324 232 C 354 202, 356 177, 320 183 C 295 187, 267 200, 244 216 C 271 198, 307 187, 325 194 C 335 198, 332 214, 314 233 C 242 308, 154 346, 128 327 C 122 322, 122 313, 132 301 C 116 317, 111 326, 116 334 Z" fill="url(#nsm-orbit)"/>
+  <path d="M 356 106 Q 358 143 398 148 Q 358 153 356 190 Q 354 153 314 148 Q 354 143 356 106 Z" fill="#0B57D0"/>
+</svg>

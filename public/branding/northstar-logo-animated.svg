@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <radialGradient id="nsa-bg" cx="50%" cy="22%" r="78%" fx="50%" fy="14%">
+      <stop offset="0%" stop-color="#1C2233"/>
+      <stop offset="48%" stop-color="#0B0E17"/>
+      <stop offset="100%" stop-color="#040509"/>
+    </radialGradient>
+    <linearGradient id="nsa-rim-top" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="30%" stop-color="#CBD5E1" stop-opacity="0.35"/>
+      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="70%" stop-color="#CBD5E1" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="nsa-rim-bottom" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="35%" stop-color="#94A3B8" stop-opacity="0.25"/>
+      <stop offset="50%" stop-color="#E2E8F0" stop-opacity="0.8"/>
+      <stop offset="65%" stop-color="#94A3B8" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="nsa-left-pillar" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFDF9"/>
+      <stop offset="45%" stop-color="#E5E9F2"/>
+      <stop offset="82%" stop-color="#647084"/>
+      <stop offset="100%" stop-color="#272E3D"/>
+    </linearGradient>
+    <linearGradient id="nsa-right-pillar" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2B3242"/>
+      <stop offset="32%" stop-color="#707C91"/>
+      <stop offset="75%" stop-color="#E6EBF3"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+    <linearGradient id="nsa-diagonal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="55%" stop-color="#EEF2F7"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+    <linearGradient id="nsa-orbit" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="50%" stop-color="#F8FAFC"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+    <radialGradient id="nsa-star-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFF8EB" stop-opacity="0.72"/>
+      <stop offset="45%" stop-color="#FDE68A" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="nsa-shadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+    <style>
+      @keyframes nsaFloat {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-3px); }
+      }
+      @keyframes nsaTwinkle {
+        0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.96; }
+        50% { transform: scale(1.1) rotate(6deg); opacity: 1; }
+      }
+      @keyframes nsaGlowPulse {
+        0%, 100% { opacity: 0.55; transform: scale(0.95); }
+        50% { opacity: 0.95; transform: scale(1.12); }
+      }
+      .nsa-mark { transform-origin: 256px 256px; animation: nsaFloat 4.2s ease-in-out infinite; }
+      .nsa-star { transform-origin: 356px 148px; animation: nsaTwinkle 3.2s ease-in-out infinite; }
+      .nsa-glow { transform-origin: 356px 148px; animation: nsaGlowPulse 3.2s ease-in-out infinite; }
+    </style>
+  </defs>
+
+  <rect x="24" y="24" width="464" height="464" rx="118" fill="url(#nsa-bg)" stroke="#2A3244" stroke-opacity="0.55" stroke-width="1.5"/>
+  <path d="M 132 25.5 C 210 23.5, 302 23.5, 380 25.5" stroke="url(#nsa-rim-top)" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M 148 486.5 C 220 488.5, 292 488.5, 364 486.5" stroke="url(#nsa-rim-bottom)" stroke-width="1.8" stroke-linecap="round"/>
+
+  <g class="nsa-mark" filter="url(#nsa-shadow)">
+    <path d="M 298 192 C 298 179, 308 170, 321 170 C 334 170, 344 179, 344 192 L 344 334 C 344 346, 334 356, 321 356 C 308 356, 298 346, 298 334 Z" fill="url(#nsa-right-pillar)"/>
+    <path d="M 164 192 C 164 179, 174 170, 187 170 C 200 170, 210 179, 210 192 L 210 334 C 210 346, 200 356, 187 356 C 174 356, 164 346, 164 334 Z" fill="url(#nsa-left-pillar)"/>
+    <path d="M 171 178 C 180 167, 198 168, 208 180 L 339 327 C 349 339, 341 356, 324 356 C 313 356, 304 351, 297 343 L 169 199 C 162 191, 164 184, 171 178 Z" fill="url(#nsa-diagonal)"/>
+    <path d="M 116 334 C 134 366, 232 324, 324 232 C 354 202, 356 177, 320 183 C 295 187, 267 200, 244 216 C 271 198, 307 187, 325 194 C 335 198, 332 214, 314 233 C 242 308, 154 346, 128 327 C 122 322, 122 313, 132 301 C 116 317, 111 326, 116 334 Z" fill="url(#nsa-orbit)"/>
+  </g>
+
+  <circle class="nsa-glow" cx="356" cy="148" r="56" fill="url(#nsa-star-glow)"/>
+  <path class="nsa-star" d="M 356 106 Q 358 143 398 148 Q 358 153 356 190 Q 354 153 314 148 Q 354 143 356 106 Z" fill="#FFFDF8"/>
+</svg>
