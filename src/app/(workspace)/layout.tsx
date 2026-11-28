@@ -8,6 +8,7 @@ import { useAuthSession } from '@/features/auth/hooks/useAuthSession';
 import { AppLauncher } from '@/components/layout/AppLauncher';
 import { UserProfileMenu } from '@/components/layout/UserProfileMenu';
 import { CallProvider } from '@/features/chat/context/CallContext';
+import { NorthstarLogo } from '@/components/ui/NorthstarLogo';
 
 // Self-contained loader: mounts & unmounts with isLoading (No cascading setState)
 function WorkspaceLoader() {
@@ -21,9 +22,7 @@ function WorkspaceLoader() {
   return (
     <div className="min-h-screen bg-[#F8FAFD] flex flex-col items-center justify-center select-none font-['Google_Sans',sans-serif] p-4 text-center">
       <div className="flex flex-col items-center gap-4 animate-in fade-in duration-300 max-w-sm">
-        <div className="w-12 h-12 rounded-2xl bg-linear-to-tr from-cyan-500 via-indigo-600 to-blue-600 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-indigo-500/20 animate-pulse">
-          ✦
-        </div>
+        <NorthstarLogo size={56} interactive3d />
         <div className="space-y-2 w-full">
           <h3 className="text-base font-semibold text-slate-800 tracking-tight">
             Northstar Workspace
@@ -76,9 +75,7 @@ export default function SuiteLayout({ children }: { children: React.ReactNode })
         <header className="h-14 border-b border-slate-200 bg-white text-slate-800 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-40 select-none shadow-xs">
           <div className="flex items-center gap-3 min-w-0">
             <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0 group cursor-pointer">
-              <div className="w-8 h-8 rounded-xl bg-linear-to-tr from-indigo-600 to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-xs group-hover:scale-105 transition-transform">
-                ✦
-              </div>
+              <NorthstarLogo size={34} interactive3d />
               <span className="font-semibold text-sm tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors truncate max-w-50 sm:max-w-xs">
                 {universityTitle}
               </span>

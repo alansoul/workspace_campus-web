@@ -12,6 +12,7 @@ import { StepContact } from './StepContact';
 import { StepDomain } from './StepDomain';
 import { StepVerify } from './StepVerify';
 import { useAuthSession } from '@/features/auth/hooks/useAuthSession';
+import { NorthstarLogo } from '@/components/ui/NorthstarLogo';
 
 const INITIAL_FORM: SetupFormData = {
   accountIntent: 'NEW_DOMAIN',
@@ -91,9 +92,12 @@ export function SetupWizard() {
     <div className="min-h-screen bg-white text-slate-900 font-sans flex flex-col">
       {/* Top Header */}
       <header className="border-b border-slate-200/80 px-6 sm:px-10 py-3.5 flex items-center justify-between">
-        <Link href="/" className="text-xl tracking-tight text-slate-800">
-          <span className="font-semibold text-slate-900">Northstar</span>{' '}
-          <span className="font-normal text-slate-600">Workspace</span>
+        <Link href="/" className="inline-flex items-center gap-2.5 text-xl tracking-tight text-slate-800">
+          <NorthstarLogo size={34} interactive3d />
+          <span>
+            <span className="font-semibold text-slate-900">Northstar</span>{' '}
+            <span className="font-normal text-slate-600">Workspace</span>
+          </span>
         </Link>
         <div className="w-8 h-8 rounded-full bg-[#00897B] text-white flex items-center justify-center font-medium text-xs">
           S
