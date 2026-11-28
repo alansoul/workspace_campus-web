@@ -16,7 +16,7 @@ export const WORKSPACE_BRAND = {
   suiteName: 'Northstar Workspace',
   tagline: 'LEARN. CONNECT. WORK. TOGETHER.',
   domain: 'iiitnr.edu.in',
-  logoSrc: '/branding/northstar-workspace-icon.svg',
+  logoSrc: '/branding/northstar-logo.svg',
 };
 
 export const SUITE_APPS: AppBrandConfig[] = [

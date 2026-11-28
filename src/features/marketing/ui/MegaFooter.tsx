@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import { NorthstarLogo } from '@/components/ui/NorthstarLogo';
 import {
   ArrowUpRight,
   GraduationCap,
@@ -148,9 +149,10 @@ export function MegaFooter() {
           <div className="flex flex-col gap-1.5">
             <Link
               href="/"
-              className="w-fit text-[14px] font-semibold tracking-[-0.2px] text-[#202124] transition-colors hover:text-[#0B57D0]"
+              className="inline-flex w-fit items-center gap-2.5 text-[14px] font-semibold tracking-[-0.2px] text-[#202124] transition-colors hover:text-[#0B57D0]"
             >
-              Northstar Workspace
+              <NorthstarLogo size={26} interactive3d />
+              <span>Northstar Workspace</span>
             </Link>
 
             <p className="text-[12px] leading-5 text-[#70757A]">

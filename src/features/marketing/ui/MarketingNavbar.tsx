@@ -7,7 +7,7 @@ import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronDown, X, ArrowRight, Search } from 'lucide-react';
-import { WORKSPACE_BRAND } from '../data/brand.config';
+import { NorthstarLogo } from '@/components/ui/NorthstarLogo';
 import {
   SOLUTIONS_MENU,
   PRODUCTS_MENU,
@@ -214,14 +214,7 @@ export function MarketingNavbar({ onScrollTo }: NavbarProps) {
             aria-label="Northstar Workspace home"
             className="flex min-w-0 shrink items-center gap-1.5 sm:gap-2.5"
           >
-            <Image
-              src={WORKSPACE_BRAND.logoSrc}
-              alt=""
-              width={42}
-              height={42}
-              priority
-              className="h-10 w-10 shrink-0 object-contain sm:h-10 sm:w-10"
-            />
+            <NorthstarLogo size={38} interactive3d />
 
 
 
