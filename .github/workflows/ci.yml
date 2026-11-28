@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: 🛒 Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 🛠️ Setup Workspace & Dependencies
         uses: ./.github/actions/setup-workspace
@@ -30,6 +30,10 @@ jobs:
 
       - name: 🔍 TypeScript Strict Type Check
         run: pnpm tsc --noEmit
+
+      - name: 🧪 Run Unit & Security Tests
+        run: pnpm test
+        continue-on-error: false
 
       - name: 🏗️ Production Next.js Build
         run: pnpm build
