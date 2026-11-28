@@ -366,7 +366,7 @@ export function ModernAuthCard({ initialMode = 'signin' }: ModernAuthCardProps) 
           <div className="space-y-4">
             <div className="space-y-2 text-center">
               <div className="mx-auto flex justify-center">
-                <NorthstarLogo size={52} interactive3d />
+                <NorthstarLogo size={68} mode="signature" interactive3d />
               </div>
               <h3 className="text-[23px] font-bold tracking-tight text-slate-900 sm:text-2xl">
                 {step === 'input' && mode === 'signin' ? 'Welcome back' : title}

@@ -22,7 +22,7 @@ function WorkspaceLoader() {
   return (
     <div className="min-h-screen bg-[#F8FAFD] flex flex-col items-center justify-center select-none font-['Google_Sans',sans-serif] p-4 text-center">
       <div className="flex flex-col items-center gap-4 animate-in fade-in duration-300 max-w-sm">
-        <NorthstarLogo size={56} interactive3d />
+        <NorthstarLogo size={76} mode="loader" interactive3d />
         <div className="space-y-2 w-full">
           <h3 className="text-base font-semibold text-slate-800 tracking-tight">
             Northstar Workspace
@@ -75,7 +75,7 @@ export default function SuiteLayout({ children }: { children: React.ReactNode })
         <header className="h-14 border-b border-slate-200 bg-white text-slate-800 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-40 select-none shadow-xs">
           <div className="flex items-center gap-3 min-w-0">
             <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0 group cursor-pointer">
-              <NorthstarLogo size={34} interactive3d />
+              <NorthstarLogo size={36} mode="idle" interactive3d />
               <span className="font-semibold text-sm tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors truncate max-w-50 sm:max-w-xs">
                 {universityTitle}
               </span>
